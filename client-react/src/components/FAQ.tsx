@@ -28,7 +28,7 @@ export function FAQ() {
 
       <div className="faq-item">
         <h4>Qual o objetivo do Coringa?</h4>
-        <p>O Coringa tem dois objetivos: <br/> 1º) Ser o primeiro jogador a morrer. Se conseguir, ele vence sozinho. <br/>2º) Se não for o primeiro a morrer, o seu objetivo muda: ele precisa de eliminar um jogador para roubar o papel e o objetivo desse jogador (exceto o do Rei).</p>
+        <p>O Coringa tem dois objetivos: <br/> 1. Ser o primeiro jogador a morrer. Se conseguir, ele vence sozinho. <br/>2. Se não for o primeiro a morrer, o seu objetivo muda: ele precisa de eliminar um jogador para roubar o papel e o objetivo desse jogador (exceto o do Rei).</p>
       </div>
 
       <div className="faq-item">
