@@ -8,7 +8,7 @@
   padding: 20px;
   font-family: sans-serif;
   background-color: #f0f2f5;
-  box-sizing: border-box; /* Garante que o padding não cause overflow */
+  box-sizing: border-box;
 }
 
 .lobby-card {
@@ -56,14 +56,13 @@
 }
 
 .lista-jogadores li {
-  /* CORREÇÃO: Define a cor do texto para escuro */
   color: #333;
   padding: 12px 5px;
   border-bottom: 1px solid #f0f0f0;
   font-size: 1.1rem;
   font-weight: 500;
   display: flex;
-  justify-content: space-between; /* Alinha o nome e a tag de host */
+  justify-content: space-between;
   align-items: center;
 }
 

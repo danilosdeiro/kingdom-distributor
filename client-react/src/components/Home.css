@@ -1,5 +1,4 @@
 .home-container {
-  /* Garante que o container ocupe a tela toda para centralizar */
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -8,7 +7,6 @@
   width: 100%;
   padding: 20px;
   box-sizing: border-box;
-  /* Overlay escuro para melhorar a legibilidade do texto sobre o fundo */
   background-color: rgba(0, 0, 0, 0.6);
 }
 
@@ -18,7 +16,7 @@
 }
 
 .title-container h1 {
-  font-family: 'Cinzel', serif; /* Fonte temática para o título */
+  font-family: 'Cinzel', serif; 
   font-size: 3.5rem;
   font-weight: 700;
   color: #E6D2AA; /* Cor dourada/pergaminho */
@@ -38,10 +36,9 @@
 }
 
 .card {
-  /* Efeito de "vidro fosco" moderno e escuro */
   background: rgba(28, 28, 30, 0.75);
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px); /* Suporte para Safari */
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 25px;
   border-radius: 12px;
@@ -68,7 +65,7 @@ label {
 input, .player-select {
   width: 100%;
   padding: 12px;
-  box-sizing: border-box; /* Importante para o padding não quebrar o layout */
+  box-sizing: border-box;
   border-radius: 6px;
   border: 1px solid #444;
   font-size: 1rem;
@@ -88,7 +85,7 @@ button {
   padding: 14px;
   border: none;
   border-radius: 6px;
-  background-color: #B89B67; /* Cor dourada mais escura para o botão */
+  background-color: #B89B67;
   color: #121212;
   font-size: 1.1rem;
   font-weight: bold;
@@ -108,14 +105,13 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* Media query para telas pequenas (mobile) */
+
 @media (max-width: 600px) {
   .title-container h1 {
     font-size: 2.5rem;
   }
 }
 
-/* Adicione isto ao final do seu arquivo Home.css */
 
 .last-role-button {
   width: 100%;
@@ -126,9 +122,7 @@ button:disabled {
   font-weight: bold;
   cursor: pointer;
   transition: all 0.2s ease-in-out;
-  
-  /* Um estilo de destaque para chamar a atenção */
-  background-color: #6a3ab2; /* Roxo temático */
+  background-color: #6a3ab2; 
   color: #e0e0e0;
   border: 1px solid #8e44ad;
 }

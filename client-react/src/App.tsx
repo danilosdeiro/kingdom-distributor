@@ -1,12 +1,13 @@
-// src/App.tsx
 import { Outlet } from 'react-router-dom';
-
+import { Footer } from './components/footer';
 function App() {
-  // Adicionamos uma div com uma classe para ser o nosso layout principal
   return (
-    <main className="app-layout">
-      <Outlet />
-    </main>
+    <div className="app-layout">
+      <main className="main-content">
+        <Outlet />
+      </main>
+      <Footer />
+    </div>
   );
 }
 

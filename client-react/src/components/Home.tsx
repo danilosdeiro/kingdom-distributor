@@ -1,5 +1,3 @@
-// src/components/Home.tsx
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { socket } from '../services/socket';
@@ -13,7 +11,6 @@ export function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Verifica se existe um papel salvo quando a página carrega
     const papelSalvo = localStorage.getItem('ultimoPapel');
     if (papelSalvo) {
       setTemPapelSalvo(true);
@@ -37,14 +34,12 @@ export function Home() {
   }, [navigate, codigoSala]);
 
   const handleCriarSala = () => {
-    // Limpa o papel antigo ao criar uma nova sala
     localStorage.removeItem('ultimoPapel');
     setTemPapelSalvo(false);
     socket.emit('criarSala', { nome: nome.trim(), numeroDeJogadores: numJogadores });
   };
 
   const handleEntrarSala = () => {
-    // Limpa o papel antigo ao entrar numa nova sala
     localStorage.removeItem('ultimoPapel');
     setTemPapelSalvo(false);
     socket.emit('entrarSala', { 
@@ -60,13 +55,12 @@ export function Home() {
   return (
     <div className="home-container">
       <div className="title-container">
-        <h1>Kingdom Commander</h1>
+        <h1>Kingdom Roles</h1>
         <p className="subtitle">Distribuidor de Papéis</p>
       </div>
 
       <div className="content-container">
         
-        {/* BOTÃO CONDICIONAL: Só aparece se houver um papel salvo */}
         {temPapelSalvo && (
           <div className="card">
             <button className="last-role-button" onClick={handleVerUltimoPapel}>

@@ -1,5 +1,3 @@
-// src/components/Lobby.tsx
-
 import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { socket } from '../services/socket';
@@ -31,13 +29,10 @@ export function Lobby() {
     };
 
     const handleSeuPapel = (papelInfo: { papel: string; objetivo: string }) => {
-      // 1. Guarda o papel no nosso gerenciador de estado temporário
       gameState.setMeuPapel(papelInfo);
       
-      // 2. GUARDA O PAPEL PERMANENTEMENTE NO NAVEGADOR
       localStorage.setItem('ultimoPapel', JSON.stringify(papelInfo));
 
-      // 3. Navega para a tela de papel secreto
       navigate('/role');
     };
 

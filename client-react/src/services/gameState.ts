@@ -3,7 +3,6 @@ interface PapelInfo {
   objetivo: string;
 }
 
-// Usamos um truque simples para criar uma variável "global" reativa.
 let papelAtual: PapelInfo | null = null;
 
 export const gameState = {
