@@ -1,0 +1,139 @@
+/* src/components/Lobby.css */
+
+.lobby-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  width: 100%;
+  padding: 20px;
+  font-family: sans-serif;
+  background-color: #f0f2f5;
+  box-sizing: border-box; /* Garante que o padding não cause overflow */
+}
+
+.lobby-card {
+  width: 100%;
+  max-width: 500px;
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.lobby-card h2 {
+  font-size: 2rem;
+  color: #333;
+  word-break: break-all;
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.lobby-card .share-code {
+  color: #666;
+  margin-top: 0;
+  margin-bottom: 25px;
+}
+
+.lista-jogadores {
+  text-align: left;
+  margin-bottom: 30px;
+  border-top: 1px solid #eee;
+  padding-top: 20px;
+}
+
+.lista-jogadores h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.lista-jogadores ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.lista-jogadores li {
+  /* CORREÇÃO: Define a cor do texto para escuro */
+  color: #333;
+  padding: 12px 5px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 1.1rem;
+  font-weight: 500;
+  display: flex;
+  justify-content: space-between; /* Alinha o nome e a tag de host */
+  align-items: center;
+}
+
+.lista-jogadores li:last-child {
+  border-bottom: none;
+}
+
+.player-name {
+  word-break: break-all;
+}
+
+.host-tag {
+  background-color: #ffc107;
+  color: #333;
+  font-size: 0.8rem;
+  font-weight: bold;
+  padding: 4px 8px;
+  border-radius: 10px;
+  margin-left: 10px;
+}
+
+.start-button {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 8px;
+  background-color: #28a745;
+  color: white;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.start-button:hover:not(:disabled) {
+  background-color: #218838;
+  transform: translateY(-2px);
+}
+
+.start-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.aguardando-host {
+  font-weight: bold;
+  color: #007bff;
+  padding: 15px 0;
+  background-color: #e7f3ff;
+  border-radius: 8px;
+}
+
+/* === MELHORIAS PARA MOBILE === */
+@media (max-width: 600px) {
+  .lobby-container {
+    padding: 10px;
+  }
+
+  .lobby-card {
+    padding: 20px;
+  }
+
+  .lobby-card h2 {
+    font-size: 1.6rem;
+  }
+
+  .lista-jogadores li {
+    font-size: 1rem;
+    padding: 10px 5px;
+  }
+}
