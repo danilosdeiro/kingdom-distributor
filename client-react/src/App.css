@@ -1,0 +1,80 @@
+/* src/App.css */
+
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Quando o menu estiver aberto, impede o scroll da página de fundo */
+.app-layout.menu-open {
+  overflow: hidden;
+}
+
+.main-content {
+  flex-grow: 1;
+}
+
+/* --- ESTILOS DO BOTÃO ANIMADO --- */
+
+.menu-toggle-button {
+  position: fixed;
+  top: 15px;
+  right: 15px;
+  z-index: 1001;
+  
+  background-color: rgba(28, 28, 30, 0.75);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  cursor: pointer;
+
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  
+  /* Adiciona uma transição suave para a mudança de cor de fundo */
+  transition: background-color 0.3s ease-in-out;
+}
+
+/* Estilo base de cada linha do hamburguer */
+.line {
+  width: 24px;
+  height: 2px;
+  background-color: #E6D2AA;
+  border-radius: 2px;
+  transition: all 0.3s ease-in-out;
+}
+
+/* --- A MÁGICA DA ANIMAÇÃO --- */
+
+.menu-toggle-button.open .line1 {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.menu-toggle-button.open .line2 {
+  opacity: 0;
+}
+
+.menu-toggle-button.open .line3 {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+
+/* --- NOVO: EFEITO DE INVERSÃO DE COR NO HOVER --- */
+
+/* Quando o rato passa por cima do botão... */
+.menu-toggle-button:hover {
+  background-color: #E6D2AA; /* O fundo do botão fica dourado */
+}
+
+/* ...e as linhas dentro do botão... */
+.menu-toggle-button:hover .line {
+  background-color: #1c1c1e; /* As linhas (ou o X) ficam escuras */
+}

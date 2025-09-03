@@ -5,7 +5,7 @@ export function Footer() {
 
   return (
     <footer className="app-footer">
-      <p>&copy; {anoAtual} Kingdom Roles | Desenvolvido por Danilo Deiró</p>
+      <p>&copy; {anoAtual} Meu Kingdom | Desenvolvido por Danilo Deiró</p>
     </footer>
   );
 }

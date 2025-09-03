@@ -1,0 +1,29 @@
+.faq-container {
+  color: #ecf0f1;
+  padding-top: 50px;
+}
+
+.faq-container h2 {
+  font-family: 'Cinzel', serif;
+  color: #E6D2AA;
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.faq-item {
+  margin-bottom: 25px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 15px;
+}
+
+.faq-item h4 {
+  font-size: 1.2rem;
+  color: #f1c40f;
+  margin-bottom: 8px;
+}
+
+.faq-item p {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #bdc3c7;
+}

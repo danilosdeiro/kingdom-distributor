@@ -1,3 +1,5 @@
+/* src/components/Home.css */
+
 .home-container {
   display: flex;
   flex-direction: column;
@@ -16,10 +18,10 @@
 }
 
 .title-container h1 {
-  font-family: 'Cinzel', serif; 
+  font-family: 'Cinzel', serif;
   font-size: 3.5rem;
   font-weight: 700;
-  color: #E6D2AA; /* Cor dourada/pergaminho */
+  color: #E6D2AA;
   text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
   margin: 0;
 }
@@ -106,29 +108,26 @@ button:disabled {
 }
 
 
-@media (max-width: 600px) {
-  .title-container h1 {
-    font-size: 2.5rem;
-  }
-}
-
-
 .last-role-button {
-  width: 100%;
-  padding: 14px;
-  border: none;
-  border-radius: 6px;
-  font-size: 1.1rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  background-color: #6a3ab2; 
-  color: #e0e0e0;
-  border: 1px solid #8e44ad;
+  background-color: #333;
+  color: #E6D2AA;
+  border: 1px solid #B89B67;
 }
 
 .last-role-button:hover {
-  background-color: #8e44ad;
-  transform: translateY(-2px);
+  background-color: #B89B67;
+  color: #1c1c1e;
+  border-color: #E6D2AA;
+  transform: translateY(-2px); 
   box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+
+@media (max-width: 600px) {
+  .title-container h1 {
+    font-size: 2.2rem;
+  }
+  .card {
+    padding: 20px;
+  }
 }
