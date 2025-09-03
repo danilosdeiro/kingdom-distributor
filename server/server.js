@@ -22,7 +22,7 @@ const LIMITE_MAXIMO_JOGADORES = 7;
 const OBJETIVOS = {
   'Rei': 'Sobreviver a todo custo! Você vence se for o último jogador vivo ou junto ao cavaleiro.',
   'Cavaleiro': 'Proteger o Rei. O seu único objetivo é garantir que o Rei vença. Se o Rei vencer, você vence também.',
-  'Assassino': 'Matar o Rei! Assim que o Rei for eliminado, contanto que não tenha sido morto pelo usurpador, todos os Assassinos vencem imediatamente.',
+  'Assassino': 'Matar o Rei! Assim que o Rei for eliminado, contanto que não tenha sido morto pelo usurpador, todos os Assassinos vencem imediatamente!',
   'Usurpador': 'Matar o Rei com as suas próprias mãos. Se conseguir, você se torna o novo Rei e assume o objetivo dele e ganha + 10 de vida.',
   'Caçador': 'Eliminar dois jogadores quaisquer, exceto o Rei.',
   'Coringa': 'Ser o primeiro jogador a ser eliminado. Se não conseguir, seu novo objetivo é eliminar um jogador qualquer para roubar o papel e o objetivo dele. (Exceto o Rei)'
