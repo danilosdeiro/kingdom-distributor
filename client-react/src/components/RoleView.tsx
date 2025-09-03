@@ -1,18 +1,31 @@
+// src/components/RoleView.tsx
+
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // Importe useNavigate
 import { gameState } from '../services/gameState';
-import './RoleView.css'; // Vamos criar este estilo
+import './RoleView.css';
 
 export function RoleView() {
   const [meuPapel, setMeuPapel] = useState<{ papel: string; objetivo: string } | null>(null);
+  const navigate = useNavigate(); // Hook para navegação
 
   useEffect(() => {
-    // Quando a página carrega, pegamos o nosso papel do gerenciador de estado
     const papelInfo = gameState.getMeuPapel();
-    setMeuPapel(papelInfo);
-  }, []);
+    if (papelInfo) {
+      setMeuPapel(papelInfo);
+    } else {
+      // Se não houver papel, talvez o jogador tenha atualizado a página. Redireciona para a home.
+      navigate('/');
+    }
+  }, [navigate]);
+
+  // Função para voltar à página principal
+  const handleVoltar = () => {
+    navigate('/');
+  };
 
   if (!meuPapel) {
-    return <div className="role-container">Carregando seu papel...</div>;
+    return <div className="role-container loading">A redirecionar...</div>;
   }
 
   return (
@@ -22,9 +35,14 @@ export function RoleView() {
         <h1>{meuPapel.papel}</h1>
         <div className="objetivo">
           <h3>Seu Objetivo:</h3>
-          <p>{meuPapel.objetivo || 'Sobreviva e conquiste a vitória de acordo com as regras do seu papel!'}</p>
+          <p>{meuPapel.objetivo}</p>
         </div>
         <p className="warning">Não revele seu papel a ninguém!</p>
+        
+        {/* BOTÃO ADICIONADO AQUI */}
+        <button className="back-button" onClick={handleVoltar}>
+          Voltar à Página Principal
+        </button>
       </div>
     </div>
   );

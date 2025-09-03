@@ -1,3 +1,5 @@
+/* src/components/RoleView.css */
+
 .role-container {
   display: flex;
   justify-content: center;
@@ -5,7 +7,13 @@
   min-height: 100vh;
   padding: 20px;
   font-family: sans-serif;
-  background-color: #2c3e50; /* Um fundo mais escuro para dar um clima */
+  background-color: #2c3e50;
+  box-sizing: border-box;
+}
+
+.role-container.loading {
+    color: white;
+    font-size: 1.5rem;
 }
 
 .role-card {
@@ -27,7 +35,7 @@
 
 .role-card h1 {
   font-size: 3.5rem;
-  color: #f1c40f; /* Dourado para destacar */
+  color: #f1c40f;
   margin: 10px 0 30px 0;
   text-transform: uppercase;
 }
@@ -41,5 +49,25 @@
 
 .warning {
   font-weight: bold;
-  color: #e74c3c !important; /* Vermelho para o aviso */
+  color: #e74c3c !important;
+}
+
+/* ESTILO DO NOVO BOTÃO */
+.back-button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 20px;
+  border: 1px solid #7f8c8d;
+  border-radius: 6px;
+  background-color: transparent;
+  color: #bdc3c7;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.back-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
 }
