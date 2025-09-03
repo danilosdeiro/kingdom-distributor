@@ -40,7 +40,7 @@ const OBJETIVOS = {
 // 'Bandido': 'Matar o Rei! Assim que o Rei for eliminado, todos os Bandidos vencem imediatamente.', // Mantido para referência futura
   'Assassino': 'Matar o Rei! Assim que o Rei for eliminado, contanto que não tenha sido morto pelo usurpador, todos os Assassinos vencem imediatamente.',
   'Usurpador': 'Matar o Rei com as suas próprias mãos. Se conseguir, você se torna o novo Rei e assume o objetivo dele.',
-  'Caçador': 'Eliminar dois jogadores quaisquer, exceto o Rei. Após cumprir seu objetivo, você se torna um Assassino com o objetivo de ser o último vivo.',
+  'Caçador': 'Eliminar dois jogadores quaisquer, exceto o Rei.',
   'Coringa': 'Ser o primeiro jogador a ser eliminado. Se não conseguir, seu novo objetivo é eliminar um jogador qualquer para roubar o papel e o objetivo dele. (Exceto o Rei)'
 };
 
