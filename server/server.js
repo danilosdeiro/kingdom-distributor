@@ -1,5 +1,3 @@
-// server/server.js
-
 const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
@@ -61,14 +59,9 @@ io.on('connection', (socket) => {
     if (sala) {
       sala.jogadores.push({ id: socket.id, nome: nome });
       socket.join(codigo);
-      
-      // CORREÇÃO DO BUG "ENTRAR NA SALA":
-      // 1. Notifica os jogadores que JÁ ESTAVAM na sala sobre o novo jogador.
       socket.to(codigo).emit('atualizarLobby', { jogadores: sala.jogadores, hostId: sala.hostId });
-      
-      // 2. Envia um evento de confirmação de volta para o jogador que acabou de entrar,
-      //    para que o seu componente Home possa navegar para o lobby.
-      socket.emit('atualizarLobby'); // Esta é a linha crucial que foi restaurada.
+
+      socket.emit('atualizarLobby');
 
     } else {
       socket.emit('erro', { mensagem: 'Sala não encontrada!' });
