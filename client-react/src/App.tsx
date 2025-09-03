@@ -2,8 +2,12 @@
 import { Outlet } from 'react-router-dom';
 
 function App() {
-  // O Outlet renderiza o componente da rota atual (Home ou Lobby)
-  return <Outlet />;
+  // Adicionamos uma div com uma classe para ser o nosso layout principal
+  return (
+    <main className="app-layout">
+      <Outlet />
+    </main>
+  );
 }
 
 export default App;
