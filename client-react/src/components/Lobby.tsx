@@ -31,14 +31,19 @@ export function Lobby() {
     };
 
     const handleSeuPapel = (papelInfo: { papel: string; objetivo: string }) => {
+      // 1. Guarda o papel no nosso gerenciador de estado temporário
       gameState.setMeuPapel(papelInfo);
+      
+      // 2. GUARDA O PAPEL PERMANENTEMENTE NO NAVEGADOR
+      localStorage.setItem('ultimoPapel', JSON.stringify(papelInfo));
+
+      // 3. Navega para a tela de papel secreto
       navigate('/role');
     };
 
     socket.on('atualizarLobby', handleAtualizarLobby);
     socket.on('seuPapel', handleSeuPapel);
 
-    // CORREÇÃO FINAL: Pede ao servidor os dados da sala assim que o componente estiver pronto.
     if (codigo) {
       socket.emit('solicitarDadosSala', codigo);
     }
@@ -48,7 +53,7 @@ export function Lobby() {
       socket.off('atualizarLobby', handleAtualizarLobby);
       socket.off('seuPapel', handleSeuPapel);
     };
-  }, [navigate, codigo]); // Adicionamos 'codigo' à dependência para garantir que o emit é feito
+  }, [navigate, codigo]);
 
   const handleDistribuirPapeis = () => {
     socket.emit('distribuirPapeis', { codigo });

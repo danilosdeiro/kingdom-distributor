@@ -114,3 +114,27 @@ button:disabled {
     font-size: 2.5rem;
   }
 }
+
+/* Adicione isto ao final do seu arquivo Home.css */
+
+.last-role-button {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  
+  /* Um estilo de destaque para chamar a atenção */
+  background-color: #6a3ab2; /* Roxo temático */
+  color: #e0e0e0;
+  border: 1px solid #8e44ad;
+}
+
+.last-role-button:hover {
+  background-color: #8e44ad;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
