@@ -42,7 +42,7 @@ export function Home() {
     <div className="home-container">
       {/* Título e subtítulo agrupados para estilização */}
       <div className="title-container">
-        <h1>Kingdom Commander</h1>
+        <h1>EDH Kingdom</h1>
         <p className="subtitle">Distribuidor de Papéis</p>
       </div>
 

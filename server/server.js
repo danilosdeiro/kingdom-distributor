@@ -16,7 +16,13 @@ const server = http.createServer(app);
 // Configuração do Socket.IO para permitir conexões do nosso app React (Vite)
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    // A CORREÇÃO ESTÁ AQUI:
+    // Permitimos tanto o nosso ambiente local (para desenvolvimento)
+    // como o nosso site publicado na Vercel.
+    origin: [
+      "http://localhost:5173",
+      "https://kingdom-distributor.vercel.app" 
+    ],
     methods: ["GET", "POST"]
   }
 });
