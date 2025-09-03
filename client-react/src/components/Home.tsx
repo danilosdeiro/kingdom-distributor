@@ -1,5 +1,3 @@
-// src/components/Home.tsx
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { socket } from '../services/socket';
@@ -17,16 +15,14 @@ export function Home() {
     if (papelSalvo) setTemPapelSalvo(true);
 
     socket.on('salaCriada', ({ codigo, jogadores }) => {
-      // Navegação de CRIAR SALA (já estava correta)
       navigate(`/lobby/${codigo}`, { state: { jogadoresIniciais: jogadores } });
     });
     
-    // --- INÍCIO DA ALTERAÇÃO ---
     socket.on('entradaComSucesso', () => {
-      // Adicionamos o { state: ... } para passar na verificação do Lobby
+
       navigate(`/lobby/${codigoSala.toUpperCase()}`, { state: { entrouNaSala: true } });
     });
-    // --- FIM DA ALTERAÇÃO ---
+   
     
     socket.on('erro', ({ mensagem }) => { 
       toast.error(mensagem); 

@@ -3,7 +3,7 @@ import './FAQ.css';
 export function FAQ() {
   return (
     <div className="faq-container">
-      <h2>FAQ - Kingdom Commander</h2>
+      <h2>FAQ - Meu Kingdom</h2>
 
       <div className="faq-item">
         <h4>Qual é o objetivo do Rei?</h4>
@@ -17,12 +17,23 @@ export function FAQ() {
 
       <div className="faq-item">
         <h4>Qual é o objetivo do Assassino?</h4>
-        <p>O Assassino é um lobo solitário. O seu objetivo é matar o Rei. Se o Rei for eliminado (e não pelo Usurpador), todos os Assassinos vencem.</p>
+        <p>Os Assassinos são cruéis, o seu objetivo é matar o Rei. Se o Rei for eliminado (não sendo pelo Usurpador), todos os Assassinos vencem.</p>
       </div>
 
       <div className="faq-item">
-        <h4>E o Coringa?</h4>
-        <p>O Coringa tem dois objetivos: 1º) Ser o primeiro jogador a morrer. Se conseguir, ele vence sozinho. 2º) Se não for o primeiro a morrer, o seu objetivo muda: ele precisa de eliminar um jogador para roubar o papel e o objetivo desse jogador (exceto o do Rei).</p>
+        <h4>Qual é o objetivo do Usurpador?</h4>
+        <p>O usurpador é um lobo solitário. O seu objetivo é matar o Rei e se tornar o rei. Ao eliminar o rei, o usurpador se torna o novo Rei e ganha 10 de vida e passa a ter a função do Rei</p>
+      </div>
+
+
+      <div className="faq-item">
+        <h4>Qual o objetivo do Coringa?</h4>
+        <p>O Coringa tem dois objetivos: <br/> 1º) Ser o primeiro jogador a morrer. Se conseguir, ele vence sozinho. <br/>2º) Se não for o primeiro a morrer, o seu objetivo muda: ele precisa de eliminar um jogador para roubar o papel e o objetivo desse jogador (exceto o do Rei).</p>
+      </div>
+
+      <div className="faq-item">
+        <h4>Qual o objetivo do Caçador?</h4>
+        <p>O Caçador é ardiloso e vence o jogo se ele for o responsável por eliminar dois jogadores que não sejam o rei.</p>
       </div>
 
     </div>

@@ -51,7 +51,6 @@ function getPapeis(numJogadores, modoDeJogo, papeisPersonalizados = []) {
 }
 
 io.on('connection', (socket) => {
-  // Eventos 'criarSala', 'entrarSala', 'solicitarDadosSala', 'mudarModoDeJogo', 'removerJogador', 'distribuirPapeis' continuam iguais
   socket.on('criarSala', ({ nome }) => {
     const codigoSala = Math.random().toString(36).substring(2, 6).toUpperCase();
     saloes[codigoSala] = { 
@@ -146,7 +145,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // --- INÍCIO DA ADIÇÃO ---
   socket.on('sairDaSala', ({ codigo }) => {
     const sala = saloes[codigo];
     if (sala) {
@@ -155,12 +153,10 @@ io.on('connection', (socket) => {
         console.log(`Jogador ${sala.jogadores[jogadorIndex].nome} saiu da sala ${codigo}.`);
         sala.jogadores.splice(jogadorIndex, 1);
 
-        // Se a sala ficar vazia após a saída
         if (sala.jogadores.length === 0) {
             delete saloes[codigo];
             console.log(`Sala ${codigo} vazia e deletada.`);
         } else {
-            // Notifica os jogadores restantes sobre a saída
             io.to(codigo).emit('atualizarLobby', {
                 jogadores: sala.jogadores,
                 hostId: sala.hostId,
@@ -171,7 +167,6 @@ io.on('connection', (socket) => {
     }
     socket.leave(codigo);
   });
-  // --- FIM DA ADIÇÃO ---
 
   socket.on('disconnect', () => {
     console.log(`Usuário desconectado: ${socket.id}`);

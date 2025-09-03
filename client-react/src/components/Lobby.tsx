@@ -1,14 +1,10 @@
-// src/components/Lobby.tsx
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-// O import do 'react-dom' e 'react-popper' não são mais necessários para o tooltip
 import { socket } from '../services/socket';
 import { gameState } from '../services/gameState';
 import { toast } from 'react-hot-toast';
 import './Lobby.css';
 
-// --- COMPONENTE DE TOOLTIP NOVO E SIMPLIFICADO ---
 const TooltipWrapper = ({ children, text }: { children: React.ReactNode; text: string }) => {
   const [isVisible, setIsVisible] = useState(false);
 
