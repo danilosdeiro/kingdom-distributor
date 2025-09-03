@@ -30,12 +30,10 @@ const OBJETIVOS = {
 
 let saloes = {};
 
-
 function getPapeis(numJogadores, modoDeJogo, papeisPersonalizados = []) {
   const PAPEIS_FIXOS = ['Rei', 'Cavaleiro', 'Assassino', 'Assassino'];
 
   if (modoDeJogo === 'personalizado') {
-
     return [...PAPEIS_FIXOS, ...papeisPersonalizados];
   }
   if (modoDeJogo === 'convencional') { 
@@ -53,6 +51,7 @@ function getPapeis(numJogadores, modoDeJogo, papeisPersonalizados = []) {
 }
 
 io.on('connection', (socket) => {
+  // Eventos 'criarSala', 'entrarSala', 'solicitarDadosSala', 'mudarModoDeJogo', 'removerJogador', 'distribuirPapeis' continuam iguais
   socket.on('criarSala', ({ nome }) => {
     const codigoSala = Math.random().toString(36).substring(2, 6).toUpperCase();
     saloes[codigoSala] = { 
@@ -82,6 +81,7 @@ io.on('connection', (socket) => {
   socket.on('solicitarDadosSala', (codigo) => {
     const sala = saloes[codigo];
     if (sala) {
+      socket.join(codigo);
       socket.emit('atualizarLobby', { 
         jogadores: sala.jogadores, 
         hostId: sala.hostId,
@@ -101,16 +101,22 @@ io.on('connection', (socket) => {
       });
     }
   });
-  
+
   socket.on('removerJogador', ({ codigo, idJogadorARemover }) => {
     const sala = saloes[codigo];
     if (sala && socket.id === sala.hostId) {
       const jogadorRemovidoSocket = io.sockets.sockets.get(idJogadorARemover);
-      sala.jogadores = sala.jogadores.filter(jogador => jogador.id !== idJogadorARemover);
       if (jogadorRemovidoSocket) {
         jogadorRemovidoSocket.emit('voceFoiRemovido', { mensagem: 'Você foi removido da sala pelo host.' });
         jogadorRemovidoSocket.leave(codigo);
       }
+      
+      const jogadorIndex = sala.jogadores.findIndex(j => j.id === idJogadorARemover);
+      if (jogadorIndex > -1) {
+        sala.jogadores.splice(jogadorIndex, 1);
+        console.log(`Jogador com ID ${idJogadorARemover} foi removido da sala ${codigo} pelo host.`);
+      }
+
       io.to(codigo).emit('atualizarLobby', { 
         jogadores: sala.jogadores, 
         hostId: sala.hostId,
@@ -121,9 +127,10 @@ io.on('connection', (socket) => {
 
   socket.on('distribuirPapeis', ({ codigo, papeisPersonalizados }) => {
     const sala = saloes[codigo];
+    if (!sala) return;
     const numeroDeJogadores = sala.jogadores.length;
 
-    if (sala && sala.hostId === socket.id && [5, 6, 7].includes(numeroDeJogadores)) {
+    if (sala.hostId === socket.id && [5, 6, 7].includes(numeroDeJogadores)) {
       const jogadores = sala.jogadores;
       const papeis = getPapeis(numeroDeJogadores, sala.modoDeJogo, papeisPersonalizados);
       
@@ -139,7 +146,64 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('disconnect', () => { console.log(`Usuário desconectado: ${socket.id}`); });
+  // --- INÍCIO DA ADIÇÃO ---
+  socket.on('sairDaSala', ({ codigo }) => {
+    const sala = saloes[codigo];
+    if (sala) {
+      const jogadorIndex = sala.jogadores.findIndex(j => j.id === socket.id);
+      if (jogadorIndex > -1) {
+        console.log(`Jogador ${sala.jogadores[jogadorIndex].nome} saiu da sala ${codigo}.`);
+        sala.jogadores.splice(jogadorIndex, 1);
+
+        // Se a sala ficar vazia após a saída
+        if (sala.jogadores.length === 0) {
+            delete saloes[codigo];
+            console.log(`Sala ${codigo} vazia e deletada.`);
+        } else {
+            // Notifica os jogadores restantes sobre a saída
+            io.to(codigo).emit('atualizarLobby', {
+                jogadores: sala.jogadores,
+                hostId: sala.hostId,
+                modoDeJogo: sala.modoDeJogo
+            });
+        }
+      }
+    }
+    socket.leave(codigo);
+  });
+  // --- FIM DA ADIÇÃO ---
+
+  socket.on('disconnect', () => {
+    console.log(`Usuário desconectado: ${socket.id}`);
+    for (const codigo in saloes) {
+      const sala = saloes[codigo];
+      const jogadorIndex = sala.jogadores.findIndex(j => j.id === socket.id);
+
+      if (jogadorIndex > -1) {
+        if (sala.hostId === socket.id) {
+          console.log(`Host da sala ${codigo} desconectou. Destruindo a sala.`);
+          io.to(codigo).emit('salaFechada', { mensagem: 'O host desconectou e a sala foi encerrada.' });
+          delete saloes[codigo];
+        } 
+        else {
+          console.log(`Jogador ${sala.jogadores[jogadorIndex].nome} desconectou da sala ${codigo}.`);
+          sala.jogadores.splice(jogadorIndex, 1);
+          
+          if (sala.jogadores.length === 0) {
+            delete saloes[codigo];
+            console.log(`Sala ${codigo} vazia e deletada.`);
+          } else {
+            io.to(codigo).emit('atualizarLobby', {
+                jogadores: sala.jogadores,
+                hostId: sala.hostId,
+                modoDeJogo: sala.modoDeJogo
+            });
+          }
+        }
+        break; 
+      }
+    }
+  });
 });
 
 server.listen(PORT, () => {

@@ -83,11 +83,21 @@
 .mode-button.active { background-color: #E6D2AA; color: #1c1c1e; border-color: #E6D2AA; }
 .host-options.read-only .mode-button { cursor: default; }
 .mode-button:not(.active):not(:disabled):hover { background-color: rgba(255, 255, 255, 0.1); color: #fff; }
-.mode-button.disabled { color: #555; cursor: not-allowed; opacity: 0.6; }
+.mode-button.disabled { color: #8d8989; cursor: not-allowed; opacity: 0.6; }
 .mode-button.disabled:hover { background-color: transparent; }
 
-.info-icon { display: flex; align-items: center; font-size: 1.2rem; color: inherit; }
-.tooltip {
+/* --- NOVOS ESTILOS PARA O TOOLTIP SIMPLIFICADO --- */
+.tooltip-wrapper {
+  position: relative;
+  display: flex;
+  flex: 1;
+}
+
+.tooltip-content {
+  position: absolute;
+  bottom: 110%; /* Posiciona acima do elemento pai */
+  left: 50%;
+  transform: translateX(-50%);
   background-color: #121212;
   color: #e0e0e0;
   padding: 10px 15px;
@@ -96,10 +106,13 @@
   font-size: 0.9rem;
   line-height: 1.5;
   max-width: 250px;
-  text-align: left;
-  z-index: 9999;
+  text-align: center;
+  z-index: 10;
   box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+  pointer-events: none; /* Impede que o mouse interaja com o tooltip */
+  white-space: pre-wrap; /* Garante que o texto quebre a linha se necessário */
 }
+
 
 .custom-roles-container { margin-top: 25px; padding-top: 25px; border-top: 1px solid rgba(255, 255, 255, 0.1); text-align: center; }
 .custom-roles-container p { margin: 0 0 15px 0; font-weight: 500; color: #E6D2AA; font-size: 1rem; }
@@ -131,6 +144,27 @@
 .waiting-message { text-align: center; font-weight: bold; color: #E6D2AA; }
 .remove-button { background-color: #982c2c; color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
 .remove-button:hover { background-color: #c82333; }
+
+.exit-button {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background-color: transparent;
+  color: #aaa;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  margin-top: 15px;
+}
+
+.exit-button:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: #888;
+  color: #fff;
+}
+
 @media (max-width: 600px) {
   .sala-info h1 { font-size: 1.8rem; }
   .modo-jogo-options { flex-direction: column; }

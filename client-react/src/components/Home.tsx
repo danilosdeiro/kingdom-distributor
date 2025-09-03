@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { socket } from '../services/socket';
-import { toast } from 'react-hot-toast'; // Importa o toast
+import { toast } from 'react-hot-toast';
 import './Home.css';
 
 export function Home() {
@@ -17,14 +17,17 @@ export function Home() {
     if (papelSalvo) setTemPapelSalvo(true);
 
     socket.on('salaCriada', ({ codigo, jogadores }) => {
+      // Navegação de CRIAR SALA (já estava correta)
       navigate(`/lobby/${codigo}`, { state: { jogadoresIniciais: jogadores } });
     });
     
+    // --- INÍCIO DA ALTERAÇÃO ---
     socket.on('entradaComSucesso', () => {
-      navigate(`/lobby/${codigoSala.toUpperCase()}`);
+      // Adicionamos o { state: ... } para passar na verificação do Lobby
+      navigate(`/lobby/${codigoSala.toUpperCase()}`, { state: { entrouNaSala: true } });
     });
+    // --- FIM DA ALTERAÇÃO ---
     
-    // ATUALIZADO: Usa toast.error em vez de alert()
     socket.on('erro', ({ mensagem }) => { 
       toast.error(mensagem); 
     });
