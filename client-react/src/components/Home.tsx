@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { socket } from '../services/socket';
 import { toast } from 'react-hot-toast';
 import './Home.css';
+
+import logoMeuKingdom from '../assets/meuking.png';
 
 export function Home() {
   const [nome, setNome] = useState('');
@@ -19,10 +21,8 @@ export function Home() {
     });
     
     socket.on('entradaComSucesso', () => {
-
       navigate(`/lobby/${codigoSala.toUpperCase()}`, { state: { entrouNaSala: true } });
     });
-   
     
     socket.on('erro', ({ mensagem }) => { 
       toast.error(mensagem); 
@@ -55,26 +55,63 @@ export function Home() {
   return (
     <div className="home-container">
       <div className="title-container">
-        <h1>Meu Kingdom</h1>
-        <p className="subtitle">Distribuidor de Papéis</p>
+        <Link to="/" className="main-logo-link">
+          <img 
+            src={logoMeuKingdom} 
+            alt="Meu Kingdom: Organize e distribua papéis para suas partidas" 
+            className="main-logo" 
+          />
+        </Link>
       </div>
+      
       <div className="content-container">
-        {temPapelSalvo && (<div className="card"><button className="last-role-button" onClick={handleVerUltimoPapel}>Ver Meu Último Papel</button></div>)}
-        <div className="card">
-          <label htmlFor="nome">Seu Nome</label>
-          <input id="nome" type="text" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: Jace Beleren" />
-        </div>
-        <div className="card">
-          <h2>Criar um Novo Salão</h2>
-          <button onClick={handleCriarSala} disabled={!nome.trim()}>
-            Criar Salão
+        {temPapelSalvo && (
+          <div className="card last-role-card">
+            <button className="last-role-button" onClick={handleVerUltimoPapel}>
+              Ver Meu Último Papel
+            </button>
+          </div>
+        )}
+
+        <div className="card primary-card-group">
+          <div className="form-group">
+            <label htmlFor="nome">Seu Nome</label>
+            <input 
+              id="nome" 
+              type="text" 
+              value={nome} 
+              onChange={(e) => setNome(e.target.value)} 
+              placeholder="Digite seu nome de jogador" 
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="codigo">Código da Sala</label>
+            <input 
+              id="codigo" 
+              type="text" 
+              value={codigoSala} 
+              onChange={(e) => setCodigoSala(e.target.value)} 
+              placeholder="Ex: ABCD" 
+            />
+          </div>
+          <button 
+            className="primary-button" 
+            onClick={handleEntrarSala} 
+            disabled={!nome.trim() || !codigoSala.trim()}
+          >
+            Entrar na Sala
           </button>
         </div>
-        <div className="card">
-          <h2>Entrar em um Salão</h2>
-          <label htmlFor="codigo">Código do Salão</label>
-          <input id="codigo" type="text" value={codigoSala} onChange={(e) => setCodigoSala(e.target.value)} placeholder="Ex: ABCD" />
-          <button onClick={handleEntrarSala} disabled={!nome.trim() || !codigoSala.trim()}>Entrar</button>
+
+        <div className="secondary-action">
+          <p className="or-separator">ou</p>
+          <button 
+            className="secondary-button create-room-button"
+            onClick={handleCriarSala} 
+            disabled={!nome.trim()}
+          >
+            Crie uma Nova Sala
+          </button>
         </div>
       </div>
     </div>
