@@ -46,11 +46,13 @@ export function Lobby() {
       setHostId(dados.hostId);
       setMeuId(socket.id ?? null);
       if (dados.modoDeJogo) setModoDeJogo(dados.modoDeJogo);
+      localStorage.setItem('jogadoresDaSala', JSON.stringify(dados.jogadores));
+      localStorage.setItem('meuId', socket.id ?? '');
     };
     
     const handleSeuPapel = (papelInfo: { papel: string; objetivo: string }) => {
       gameState.setMeuPapel(papelInfo);
-      localStorage.setItem('ultimoPapel', JSON.stringify(papelInfo));
+      localStorage.setItem('ultimoPapel', JSON.stringify(papelInfo));;
       navigate('/role', { replace: true });
     };
 

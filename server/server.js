@@ -65,12 +65,38 @@ io.on('connection', (socket) => {
   socket.on('entrarSala', ({ codigo, nome }) => {
     const sala = saloes[codigo];
     if (sala) {
-      if (sala.jogadores.length >= LIMITE_MAXIMO_JOGADORES) {
-        return socket.emit('erro', { mensagem: `A sala '${codigo}' está cheia!` });
+      // 1. O Porteiro: Verifica se o jogador já está na lista (pelo nome ou pelo ID antigo)
+      const jogadorIndex = sala.jogadores.findIndex(j => j.nome === nome || j.id === socket.id);
+
+      if (jogadorIndex > -1) {
+        // Se ele já existe, nós NÃO criamos um clone. Apenas atualizamos o ID dele 
+        // (Isso é crucial se ele tiver desconectado pelo celular e voltado com um ID novo)
+        sala.jogadores[jogadorIndex].id = socket.id;
+        sala.jogadores[jogadorIndex].nome = nome;
+      } else {
+        // Se ele não existe, aí sim é um jogador novo entrando normalmente
+        if (sala.jogadores.length >= LIMITE_MAXIMO_JOGADORES) {
+          return socket.emit('erro', { mensagem: `A sala '${codigo}' está cheia!` });
+        }
+        sala.jogadores.push({ id: socket.id, nome: nome });
       }
-      sala.jogadores.push({ id: socket.id, nome: nome });
+
+      // 2. A Mágica da Reconexão no meio do jogo:
+      // Se a partida já começou (os papéis foram distribuídos), atualizamos o ID dele lá 
+      // também, para que ele possa continuar clicando nos botões e jogando!
+      if (sala.papeisDesignados) {
+        const papelDoJogador = sala.papeisDesignados.find(p => p.nome === nome);
+        if (papelDoJogador) {
+          papelDoJogador.id = socket.id;
+        }
+      }
+
       socket.join(codigo);
-      io.to(codigo).emit('atualizarLobby', { jogadores: sala.jogadores, hostId: sala.hostId, modoDeJogo: sala.modoDeJogo });
+      io.to(codigo).emit('atualizarLobby', { 
+        jogadores: sala.jogadores, 
+        hostId: sala.hostId, 
+        modoDeJogo: sala.modoDeJogo 
+      });
       socket.emit('entradaComSucesso');
     } else {
       socket.emit('erro', { mensagem: 'Sala não encontrada!' });
@@ -130,6 +156,10 @@ io.on('connection', (socket) => {
     const numeroDeJogadores = sala.jogadores.length;
 
     if (sala.hostId === socket.id && [5, 6, 7].includes(numeroDeJogadores)) {
+      
+      // Limpa o histórico de mortes caso estejam jogando novamente na mesma sala
+      sala.historicoMortes = []; 
+
       const jogadores = sala.jogadores;
       const papeis = getPapeis(numeroDeJogadores, sala.modoDeJogo, papeisPersonalizados);
       
@@ -139,10 +169,76 @@ io.on('connection', (socket) => {
         const objetivo = OBJETIVOS[papel] || 'Nenhum objetivo específico.';
         io.to(jogador.id).emit('seuPapel', { papel: papel, objetivo: objetivo });
       });
-      sala.papeisDesignados = jogadores.map((j, i) => ({ nome: j.nome, papel: papeisEmbaralhados[i] }));
+      
+      // Salva os dados completos com a vida e os abates
+      sala.papeisDesignados = jogadores.map((j, i) => ({ 
+        id: j.id, 
+        nome: j.nome, 
+        papel: papeisEmbaralhados[i],
+        vivo: true,
+        abates: 0
+      }));
+
     } else {
       socket.emit('erro', { mensagem: 'Condições para iniciar a partida não foram atendidas.' });
     }
+  });
+
+  socket.on('jogadorEliminado', ({ codigo, assassinoId }) => {
+    const sala = saloes[codigo];
+    if (!sala || !sala.papeisDesignados) return;
+
+    const vitima = sala.papeisDesignados.find(p => p.id === socket.id);
+    const assassino = sala.papeisDesignados.find(p => p.id === assassinoId);
+
+    if (!vitima || !assassino || !vitima.vivo) return;
+
+    vitima.vivo = false;
+    assassino.abates += 1;
+    sala.historicoMortes = sala.historicoMortes || [];
+    sala.historicoMortes.push({ vitima: vitima.nome, assassino: assassino.nome });
+
+    // Regra do Coringa: Primeiro a morrer
+    if (vitima.papel === 'Coringa' && sala.historicoMortes.length === 1) {
+      return io.to(codigo).emit('fimDeJogo', { vencedor: 'Coringa', mensagem: 'O Coringa foi o primeiro a ser eliminado e venceu o jogo!' });
+    }
+
+    // Regra do Coringa: Roubar papel
+    if (assassino.papel === 'Coringa') {
+      assassino.papel = vitima.papel;
+      io.to(assassino.id).emit('seuPapel', { papel: assassino.papel, objetivo: OBJETIVOS[assassino.papel] });
+      io.to(assassino.id).emit('mensagemSistema', { mensagem: `Você roubou o papel de ${vitima.papel}!` });
+    }
+
+    // Regra do Caçador
+    if (assassino.papel === 'Caçador') {
+      if (assassino.abates === 2) {
+        return io.to(codigo).emit('fimDeJogo', { vencedor: 'Caçador', mensagem: 'O Caçador conseguiu sua segunda presa e venceu o jogo!' });
+      }
+      if (vitima.papel === 'Rei' && assassino.abates === 1) {
+        return io.to(codigo).emit('fimDeJogo', { vencedor: 'Assassinos', mensagem: 'O Caçador foi apressado e matou o Rei como primeira vítima. Os Assassinos vencem!' });
+      }
+    }
+
+    // Regra do Usurpador e Rei
+    if (vitima.papel === 'Rei') {
+      if (assassino.papel === 'Usurpador') {
+        assassino.papel = 'Rei';
+        io.to(assassino.id).emit('seuPapel', { papel: 'Rei', objetivo: OBJETIVOS['Rei'] });
+        io.to(codigo).emit('mensagemSistema', { mensagem: 'O Rei caiu! Vida longa ao novo Rei (Usurpador)!' });
+      } else {
+        return io.to(codigo).emit('fimDeJogo', { vencedor: 'Assassinos', mensagem: 'O Rei foi eliminado! Os Assassinos vencem a partida!' });
+      }
+    }
+
+    // Regra dos Assassinos
+    const assassinosMortos = sala.papeisDesignados.filter(p => p.papel === 'Assassino' && !p.vivo).length;
+    if (assassinosMortos >= 2) {
+      return io.to(codigo).emit('fimDeJogo', { vencedor: 'Rei', mensagem: 'Dois Assassinos foram eliminados! A coroa está a salvo, o Rei vence!' });
+    }
+
+    // Confirma a morte para a tela do jogador que morreu
+    socket.emit('morteConfirmada');
   });
 
   socket.on('sairDaSala', ({ codigo }) => {
