@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useParams } from 'react-router-dom'; // Adicionado useParams
 import { socket } from '../services/socket';
 import { toast } from 'react-hot-toast';
 import './Home.css';
@@ -7,32 +7,45 @@ import './Home.css';
 import logoMeuKingdom from '../assets/meuking.png';
 
 export function Home() {
+  const { codigoConvite } = useParams(); // 👇 Captura o código da URL (meukingdom.app/ABCD)
   const [nome, setNome] = useState('');
   const [codigoSala, setCodigoSala] = useState('');
   const [temPapelSalvo, setTemPapelSalvo] = useState(false);
-  
-  // 👇 PASSO 1: O novo estado fica aqui, junto com os outros!
   const [temSalaSalva, setTemSalaSalva] = useState(false);
 
   const navigate = useNavigate();
 
-  // 👇 PASSO 2: O novo useEffect que checa o localStorage ao abrir a tela inicial
+  // Checa localStorage ao abrir
   useEffect(() => {
     if(localStorage.getItem('salaAtual') && localStorage.getItem('meuNome')) {
         setTemSalaSalva(true);
     }
+    const papelSalvo = localStorage.getItem('ultimoPapel');
+    if (papelSalvo) setTemPapelSalvo(true);
   }, []);
 
   useEffect(() => {
-    const papelSalvo = localStorage.getItem('ultimoPapel');
-    if (papelSalvo) setTemPapelSalvo(true);
+    // 👇 NOVA LÓGICA DE CONVITE: Se houver código na URL, preenche o input
+    if (codigoConvite && codigoConvite.toUpperCase() !== codigoSala) {
+    const codigoLimpo = codigoConvite.toUpperCase();
+    setCodigoSala(codigoLimpo);
+    
+    // Usamos um ID fixo no toast para ele não se repetir
+    toast.success(`Sala ${codigoLimpo} detectada!`, { 
+      icon: '🔗',
+      id: 'convite-toast' // Isso impede que o React abra vários iguais
+    });
+  }
 
     socket.on('salaCriada', ({ codigo, jogadores }) => {
+      localStorage.setItem('salaAtual', codigo);
       navigate(`/lobby/${codigo}`, { state: { jogadoresIniciais: jogadores } });
     });
     
     socket.on('entradaComSucesso', () => {
-      navigate(`/lobby/${codigoSala.toUpperCase()}`, { state: { entrouNaSala: true } });
+      // Usa o código da URL ou o que está no input
+      const salaDestino = (codigoConvite || codigoSala).toUpperCase();
+      navigate(`/lobby/${salaDestino}`, { state: { entrouNaSala: true } });
     });
     
     socket.on('erro', ({ mensagem }) => { 
@@ -44,36 +57,37 @@ export function Home() {
       socket.off('entradaComSucesso');
       socket.off('erro');
     };
-  }, [navigate, codigoSala]);
+  }, [navigate, codigoSala, codigoConvite]); // codigoConvite adicionado como dependência
 
-  // 👇 PASSO 3: A nova função fica aqui, junto com as outras funções "handle"
   const handleReconectar = () => {
     const codigo = localStorage.getItem('salaAtual');
     const nomeSalvo = localStorage.getItem('meuNome');
     if(codigo && nomeSalvo) {
-       // Opcional: Atualiza o estado da tela para os dados salvos
        setCodigoSala(codigo);
        setNome(nomeSalvo);
-       // Dispara a reconexão
        socket.emit('entrarSala', { codigo, nome: nomeSalvo });
     }
   }
 
   const handleCriarSala = () => {
+    if (!nome.trim()) {
+      toast.error("Digite seu nome primeiro!");
+      return;
+    }
     localStorage.removeItem('ultimoPapel');
     setTemPapelSalvo(false);
-    
-    // NOVO: Salva o nome para poder reconectar depois
     localStorage.setItem('meuNome', nome.trim()); 
-    
     socket.emit('criarSala', { nome: nome.trim() });
   };
 
   const handleEntrarSala = () => {
+    if (!nome.trim() || !codigoSala.trim()) {
+      toast.error("Preencha nome e código!");
+      return;
+    }
     localStorage.removeItem('ultimoPapel');
     setTemPapelSalvo(false);
     
-    // NOVO: Salva o nome e a sala para poder reconectar depois
     localStorage.setItem('meuNome', nome.trim());
     localStorage.setItem('salaAtual', codigoSala.trim().toUpperCase());
     
@@ -91,7 +105,7 @@ export function Home() {
         <Link to="/" className="main-logo-link">
           <img 
             src={logoMeuKingdom} 
-            alt="Meu Kingdom: Organize e distribua papéis para suas partidas" 
+            alt="Meu Kingdom" 
             className="main-logo" 
           />
         </Link>
@@ -106,7 +120,6 @@ export function Home() {
           </div>
         )}
 
-        {/* 👇 PASSO 4: O novo botão de reconectar entra aqui na interface! */}
         {temSalaSalva && (
           <div className="card last-role-card" style={{ marginBottom: '20px' }}>
             <button className="last-role-button" onClick={handleReconectar} style={{ borderColor: '#34c759', color: '#34c759' }}>

@@ -19,10 +19,19 @@ function App() {
     // Adiciona uma classe ao layout quando o menu está aberto
     // Útil para, por exemplo, impedir o scroll da página de fundo
     <div className={`app-layout ${isMenuOpen ? 'menu-open' : ''}`}>
-      <Toaster 
-        position="top-center"
-        toastOptions={{ style: { background: '#333', color: '#fff' } }}
-      />
+    <Toaster 
+      position="top-center" 
+      reverseOrder={false} 
+      gutter={8}
+      containerStyle={{ top: 40 }} // Para não cobrir a coroa
+      toastOptions={{
+        duration: 3000,
+        style: {
+          background: '#333',
+          color: '#fff',
+        },
+      }}
+    />
 
       {/* Botão de Menu ATUALIZADO */}
       <button 

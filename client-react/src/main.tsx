@@ -8,22 +8,27 @@ import { Home } from './components/Home.tsx';
 import { Lobby } from './components/Lobby.tsx';
 import { RoleView } from './components/RoleView.tsx';
 
-
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <App />,
+    element: <App />, // Mantemos o App como o pai de todos
     children: [
       {
-        path: '/',
+        // Esta é a rota da Home sem código (acesso normal)
+        index: true, 
         element: <Home />,
       },
       {
-        path: '/lobby/:codigo',
+        // Esta é a rota que captura o código (ex: /ABCD)
+        path: ':codigoConvite', 
+        element: <Home />,
+      },
+      {
+        path: 'lobby/:codigo',
         element: <Lobby />,
       },
       {
-        path: '/role',
+        path: 'role',
         element: <RoleView />,
       },
     ],

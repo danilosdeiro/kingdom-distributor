@@ -25,6 +25,33 @@ type ModoDeJogo = 'aleatorio' | 'convencional' | 'personalizado';
 type PapelSorteavel = 'Usurpador' | 'Caçador' | 'Coringa';
 
 export function Lobby() {
+const handleCompartilhar = () => {
+  // Se 'codigo' for undefined, vira '' (string vazia)
+  const codigoLimpo = (codigo || '').toUpperCase(); 
+  
+  if (!codigoLimpo) {
+    toast.error("Código da sala não encontrado!");
+    return;
+  }
+  const urlConvite = `${window.location.origin}/${codigoLimpo}`;
+  
+  // No campo 'text', NÃO colocamos o link, pois o campo 'url' já vai adicioná-lo
+  const mensagem = `⚔️ *Meu Kingdom* ⚔️\nEntre na sala para receber seu papel secreto!`;
+
+  if (navigator.share) {
+    navigator.share({
+      title: 'Meu Kingdom',
+      text: mensagem, // Apenas a frase
+      url: urlConvite, // O link entra aqui e o navegador cuida de anexar uma única vez
+    }).catch(console.error);
+  } else {
+    // Caso de fallback (PC/Cópia manual)
+    const textoCompleto = `${mensagem}\n\nLink: ${urlConvite}`;
+    navigator.clipboard.writeText(textoCompleto).then(() => {
+      toast.success('Link de convite copiado!');
+    });
+  }
+};
   const { codigo } = useParams<{ codigo: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -132,6 +159,9 @@ export function Lobby() {
           <h1 title="Clique para copiar" onClick={() => codigo && navigator.clipboard.writeText(codigo.toUpperCase()).then(() => toast.success('Código Copiado!'))}>
             {codigo?.toUpperCase()}
           </h1>
+          <button className="share-button" onClick={handleCompartilhar}>
+            Compartilhar Sala
+          </button>
         </div>
 
         <div className="players-list">

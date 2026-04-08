@@ -169,3 +169,21 @@
   .modo-jogo-options { flex-direction: column; }
   .mode-button { width: 100%; }
 }
+
+.share-button {
+  background-color: #25d366; /* Cor do WhatsApp */
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+  font-size: 0.9rem;
+  transition: transform 0.2s;
+}
+
+.share-button:hover {
+  transform: scale(1.05);
+  background-color: #128c7e;
+}
