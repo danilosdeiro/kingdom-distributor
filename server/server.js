@@ -2,9 +2,22 @@
 
 const express = require('express');
 const http = require('http');
-const { Server } = require("socket.io");
+const { Server } = require('socket.io');
 const cors = require('cors');
-const crypto = require('crypto');
+const {
+  MAX_PLAYERS,
+  canStartGame,
+  generateRoomCode,
+  getLobbyPayload,
+  getObjective,
+  getRoleLabel,
+  getRoles,
+  normalizePlayerName,
+  normalizeRole,
+  normalizeRoomCode,
+  shuffle,
+  validateElimination,
+} = require('./gameRules');
 
 const app = express();
 
@@ -13,226 +26,224 @@ const CLIENT_ORIGINS = (process.env.CLIENT_ORIGINS || 'http://localhost:5173,htt
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+const PORT = process.env.PORT || 3000;
+const RECONNECT_GRACE_MS = Number(process.env.RECONNECT_GRACE_MS || 120000);
+
 app.use(cors({ origin: CLIENT_ORIGINS }));
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
 const server = http.createServer(app);
-
 const io = new Server(server, {
   cors: {
     origin: CLIENT_ORIGINS,
-    methods: ["GET", "POST"]
-  }
+    methods: ['GET', 'POST'],
+  },
 });
 
-const PORT = process.env.PORT || 3000;
-const LIMITE_MAXIMO_JOGADORES = 7;
+const saloes = {};
 
-const OBJETIVOS = {
-  'Rei': 'Sobreviver a todo custo! Você vence se for o último jogador vivo ou junto ao cavaleiro.',
-  'Cavaleiro': 'Proteger o Rei. O seu único objetivo é garantir que o Rei vença. Se o Rei vencer, você vence também.',
-  'Assassino': 'Matar o Rei! Assim que o Rei for eliminado, contanto que não tenha sido morto pelo usurpador, todos os Assassinos vencem imediatamente!',
-  'Usurpador': 'Matar o Rei com as suas próprias mãos. Se conseguir, você se torna o novo Rei e assume o objetivo dele e ganha + 10 de vida.',
-  'Caçador': 'Eliminar dois jogadores quaisquer, exceto o Rei.',
-  'Coringa': 'Ser o primeiro jogador a ser eliminado. Se não conseguir, seu novo objetivo é eliminar um jogador qualquer para roubar o papel e o objetivo dele. (Exceto o Rei)'
-};
-
-let saloes = {};
-
-function gerarCodigoSala() {
-  let codigoSala;
-
-  do {
-    codigoSala = crypto.randomBytes(3).toString('hex').slice(0, 4).toUpperCase();
-  } while (saloes[codigoSala]);
-
-  return codigoSala;
+function roomExists(codigo) {
+  return Boolean(saloes[codigo]);
 }
 
-function embaralhar(lista) {
-  const embaralhada = [...lista];
-
-  for (let i = embaralhada.length - 1; i > 0; i--) {
-    const j = crypto.randomInt(i + 1);
-    [embaralhada[i], embaralhada[j]] = [embaralhada[j], embaralhada[i]];
-  }
-
-  return embaralhada;
+function emitLobby(codigo, sala) {
+  io.to(codigo).emit('atualizarLobby', getLobbyPayload(sala));
 }
 
-function validarEliminacao(sala, vitima, assassino) {
-  if (!sala || !sala.papeisDesignados) return false;
-  if (!vitima || !assassino) return false;
-  if (!vitima.vivo || !assassino.vivo) return false;
-  if (vitima.id === assassino.id) return false;
+function clearDisconnectTimer(sala, playerId) {
+  if (!sala.disconnectTimers?.[playerId]) return;
 
-  const jogadoresDaPartida = new Set(sala.papeisDesignados.map((jogador) => jogador.id));
-  return jogadoresDaPartida.has(vitima.id) && jogadoresDaPartida.has(assassino.id);
+  clearTimeout(sala.disconnectTimers[playerId]);
+  delete sala.disconnectTimers[playerId];
 }
 
-function getPapeis(numJogadores, modoDeJogo, papeisPersonalizados = []) {
-  const PAPEIS_FIXOS = ['Rei', 'Cavaleiro', 'Assassino', 'Assassino'];
+function schedulePlayerRemoval(codigo, sala, jogador) {
+  sala.disconnectTimers = sala.disconnectTimers || {};
+  clearDisconnectTimer(sala, jogador.id);
 
-  if (modoDeJogo === 'personalizado') {
-    return [...PAPEIS_FIXOS, ...papeisPersonalizados];
+  sala.disconnectTimers[jogador.id] = setTimeout(() => {
+    const salaAtual = saloes[codigo];
+    if (!salaAtual) return;
+
+    const jogadorAtual = salaAtual.jogadores.find((player) => player.nome === jogador.nome);
+    if (!jogadorAtual || jogadorAtual.connected) return;
+
+    if (salaAtual.hostId === jogadorAtual.id) {
+      io.to(codigo).emit('salaFechada', { mensagem: 'O host desconectou e a sala foi encerrada.' });
+      delete saloes[codigo];
+      return;
+    }
+
+    salaAtual.jogadores = salaAtual.jogadores.filter((player) => player.nome !== jogadorAtual.nome);
+
+    if (salaAtual.jogadores.length === 0) {
+      delete saloes[codigo];
+      return;
+    }
+
+    emitLobby(codigo, salaAtual);
+  }, RECONNECT_GRACE_MS);
+}
+
+function updateAssignedRoleSocketId(sala, nome, socketId) {
+  if (!sala.papeisDesignados) return;
+
+  const papelDoJogador = sala.papeisDesignados.find((papel) => papel.nome === nome);
+  if (papelDoJogador) {
+    papelDoJogador.id = socketId;
   }
-  if (modoDeJogo === 'convencional') { 
-    return [...PAPEIS_FIXOS, 'Usurpador']; 
+}
+
+function findRoomBySocket(socketId) {
+  for (const [codigo, sala] of Object.entries(saloes)) {
+    const jogador = sala.jogadores.find((player) => player.id === socketId);
+    if (jogador) return { codigo, sala, jogador };
   }
-  
-  const PAPEIS_SORTEAVEIS = ['Usurpador', 'Caçador', 'Coringa'];
-  const sorteaveisEmbaralhados = embaralhar(PAPEIS_SORTEAVEIS);
-  let papeisDaPartida = [...PAPEIS_FIXOS];
-  const numeroDePapeisSorteados = numJogadores - PAPEIS_FIXOS.length;
-  for (let i = 0; i < numeroDePapeisSorteados; i++) {
-    papeisDaPartida.push(sorteaveisEmbaralhados[i]);
-  }
-  return papeisDaPartida;
+
+  return null;
 }
 
 io.on('connection', (socket) => {
   socket.on('criarSala', ({ nome }) => {
-    const codigoSala = gerarCodigoSala();
-    saloes[codigoSala] = { 
-      hostId: socket.id, 
-      jogadores: [{ id: socket.id, nome: nome }],
-      modoDeJogo: 'aleatorio'
+    const nomeLimpo = normalizePlayerName(nome);
+    if (!nomeLimpo) {
+      return socket.emit('erro', { mensagem: 'Digite seu nome primeiro.' });
+    }
+
+    const codigoSala = generateRoomCode(roomExists);
+    saloes[codigoSala] = {
+      hostId: socket.id,
+      jogadores: [{ id: socket.id, nome: nomeLimpo, connected: true }],
+      modoDeJogo: 'aleatorio',
+      disconnectTimers: {},
     };
+
     socket.join(codigoSala);
     socket.emit('salaCriada', { codigo: codigoSala, jogadores: saloes[codigoSala].jogadores });
   });
 
   socket.on('entrarSala', ({ codigo, nome }) => {
-    const sala = saloes[codigo];
-    if (sala) {
-      // 1. O Porteiro: Verifica se o jogador já está na lista (pelo nome ou pelo ID antigo)
-      const jogadorIndex = sala.jogadores.findIndex(j => j.nome === nome || j.id === socket.id);
+    const codigoSala = normalizeRoomCode(codigo);
+    const nomeLimpo = normalizePlayerName(nome);
+    const sala = saloes[codigoSala];
 
-      if (jogadorIndex > -1) {
-        // Se ele já existe, nós NÃO criamos um clone. Apenas atualizamos o ID dele 
-        // (Isso é crucial se ele tiver desconectado pelo celular e voltado com um ID novo)
-        sala.jogadores[jogadorIndex].id = socket.id;
-        sala.jogadores[jogadorIndex].nome = nome;
-      } else {
-        // Se ele não existe, aí sim é um jogador novo entrando normalmente
-        if (sala.jogadores.length >= LIMITE_MAXIMO_JOGADORES) {
-          return socket.emit('erro', { mensagem: `A sala '${codigo}' está cheia!` });
-        }
-        sala.jogadores.push({ id: socket.id, nome: nome });
-      }
-
-      // 2. A Mágica da Reconexão no meio do jogo:
-      // Se a partida já começou (os papéis foram distribuídos), atualizamos o ID dele lá 
-      // também, para que ele possa continuar clicando nos botões e jogando!
-      if (sala.papeisDesignados) {
-        const papelDoJogador = sala.papeisDesignados.find(p => p.nome === nome);
-        if (papelDoJogador) {
-          papelDoJogador.id = socket.id;
-        }
-      }
-
-      socket.join(codigo);
-      io.to(codigo).emit('atualizarLobby', { 
-        jogadores: sala.jogadores, 
-        hostId: sala.hostId, 
-        modoDeJogo: sala.modoDeJogo 
-      });
-      socket.emit('entradaComSucesso');
-    } else {
-      socket.emit('erro', { mensagem: 'Sala não encontrada!' });
+    if (!sala) {
+      return socket.emit('erro', { mensagem: 'Sala nao encontrada.' });
     }
+
+    if (!nomeLimpo) {
+      return socket.emit('erro', { mensagem: 'Digite seu nome primeiro.' });
+    }
+
+    const jogadorIndex = sala.jogadores.findIndex((player) => player.nome === nomeLimpo || player.id === socket.id);
+
+    if (jogadorIndex > -1) {
+      const oldId = sala.jogadores[jogadorIndex].id;
+      clearDisconnectTimer(sala, oldId);
+      sala.jogadores[jogadorIndex] = {
+        ...sala.jogadores[jogadorIndex],
+        id: socket.id,
+        nome: nomeLimpo,
+        connected: true,
+      };
+
+      if (sala.hostId === oldId) {
+        sala.hostId = socket.id;
+      }
+    } else {
+      if (sala.jogadores.length >= MAX_PLAYERS) {
+        return socket.emit('erro', { mensagem: `A sala '${codigoSala}' esta cheia.` });
+      }
+
+      sala.jogadores.push({ id: socket.id, nome: nomeLimpo, connected: true });
+    }
+
+    updateAssignedRoleSocketId(sala, nomeLimpo, socket.id);
+    socket.join(codigoSala);
+    emitLobby(codigoSala, sala);
+    socket.emit('entradaComSucesso');
   });
 
   socket.on('solicitarDadosSala', (codigo) => {
-    const sala = saloes[codigo];
-    if (sala) {
-      socket.join(codigo);
-      socket.emit('atualizarLobby', { 
-        jogadores: sala.jogadores, 
-        hostId: sala.hostId,
-        modoDeJogo: sala.modoDeJogo
-      });
+    const codigoSala = normalizeRoomCode(codigo);
+    const sala = saloes[codigoSala];
+
+    if (!sala) {
+      return socket.emit('erro', { mensagem: 'Sala nao encontrada.' });
     }
+
+    socket.join(codigoSala);
+    socket.emit('atualizarLobby', getLobbyPayload(sala));
   });
 
   socket.on('mudarModoDeJogo', ({ codigo, novoModo }) => {
-    const sala = saloes[codigo];
+    const codigoSala = normalizeRoomCode(codigo);
+    const sala = saloes[codigoSala];
+
     if (sala && socket.id === sala.hostId) {
       sala.modoDeJogo = novoModo;
-      io.to(codigo).emit('atualizarLobby', { 
-        jogadores: sala.jogadores, 
-        hostId: sala.hostId,
-        modoDeJogo: sala.modoDeJogo
-      });
+      emitLobby(codigoSala, sala);
     }
   });
 
   socket.on('removerJogador', ({ codigo, idJogadorARemover }) => {
-    const sala = saloes[codigo];
-    if (sala && socket.id === sala.hostId) {
-      const jogadorRemovidoSocket = io.sockets.sockets.get(idJogadorARemover);
-      if (jogadorRemovidoSocket) {
-        jogadorRemovidoSocket.emit('voceFoiRemovido', { mensagem: 'Você foi removido da sala pelo host.' });
-        jogadorRemovidoSocket.leave(codigo);
-      }
-      
-      const jogadorIndex = sala.jogadores.findIndex(j => j.id === idJogadorARemover);
-      if (jogadorIndex > -1) {
-        sala.jogadores.splice(jogadorIndex, 1);
-        console.log(`Jogador com ID ${idJogadorARemover} foi removido da sala ${codigo} pelo host.`);
-      }
+    const codigoSala = normalizeRoomCode(codigo);
+    const sala = saloes[codigoSala];
 
-      io.to(codigo).emit('atualizarLobby', { 
-        jogadores: sala.jogadores, 
-        hostId: sala.hostId,
-        modoDeJogo: sala.modoDeJogo
-      });
+    if (!sala || socket.id !== sala.hostId) return;
+
+    const jogadorRemovidoSocket = io.sockets.sockets.get(idJogadorARemover);
+    if (jogadorRemovidoSocket) {
+      jogadorRemovidoSocket.emit('voceFoiRemovido', { mensagem: 'Voce foi removido da sala pelo host.' });
+      jogadorRemovidoSocket.leave(codigoSala);
     }
+
+    clearDisconnectTimer(sala, idJogadorARemover);
+    sala.jogadores = sala.jogadores.filter((player) => player.id !== idJogadorARemover);
+    emitLobby(codigoSala, sala);
   });
 
-  socket.on('distribuirPapeis', ({ codigo, papeisPersonalizados }) => {
-    const sala = saloes[codigo];
+  socket.on('distribuirPapeis', ({ codigo, papeisPersonalizados = [] }) => {
+    const codigoSala = normalizeRoomCode(codigo);
+    const sala = saloes[codigoSala];
     if (!sala) return;
+
     const numeroDeJogadores = sala.jogadores.length;
 
-    if (sala.hostId === socket.id && [5, 6, 7].includes(numeroDeJogadores)) {
-      
-      // Limpa o histórico de mortes caso estejam jogando novamente na mesma sala
-      sala.historicoMortes = []; 
-
-      const jogadores = sala.jogadores;
-      const papeis = getPapeis(numeroDeJogadores, sala.modoDeJogo, papeisPersonalizados);
-      
-      const papeisEmbaralhados = embaralhar(papeis);
-      jogadores.forEach((jogador, index) => {
-        const papel = papeisEmbaralhados[index];
-        const objetivo = OBJETIVOS[papel] || 'Nenhum objetivo específico.';
-        io.to(jogador.id).emit('seuPapel', { papel: papel, objetivo: objetivo });
-      });
-      
-      // Salva os dados completos com a vida e os abates
-      sala.papeisDesignados = jogadores.map((j, i) => ({ 
-        id: j.id, 
-        nome: j.nome, 
-        papel: papeisEmbaralhados[i],
-        vivo: true,
-        abates: 0
-      }));
-
-    } else {
-      socket.emit('erro', { mensagem: 'Condições para iniciar a partida não foram atendidas.' });
+    if (sala.hostId !== socket.id || !canStartGame(numeroDeJogadores, sala.modoDeJogo, papeisPersonalizados)) {
+      return socket.emit('erro', { mensagem: 'Condicoes para iniciar a partida nao foram atendidas.' });
     }
+
+    sala.historicoMortes = [];
+
+    const jogadores = sala.jogadores;
+    const papeis = getRoles(numeroDeJogadores, sala.modoDeJogo, papeisPersonalizados);
+    const papeisEmbaralhados = shuffle(papeis);
+
+    jogadores.forEach((jogador, index) => {
+      const papel = normalizeRole(papeisEmbaralhados[index]);
+      io.to(jogador.id).emit('seuPapel', { papel: getRoleLabel(papel), objetivo: getObjective(papel) });
+    });
+
+    sala.papeisDesignados = jogadores.map((jogador, index) => ({
+      id: jogador.id,
+      nome: jogador.nome,
+      papel: normalizeRole(papeisEmbaralhados[index]),
+      vivo: true,
+      abates: 0,
+    }));
   });
 
   socket.on('jogadorEliminado', ({ codigo, assassinoId }) => {
-    const sala = saloes[codigo];
+    const codigoSala = normalizeRoomCode(codigo);
+    const sala = saloes[codigoSala];
     if (!sala || !sala.papeisDesignados) return;
 
-    const vitima = sala.papeisDesignados.find(p => p.id === socket.id);
-    const assassino = sala.papeisDesignados.find(p => p.id === assassinoId);
+    const vitima = sala.papeisDesignados.find((player) => player.id === socket.id);
+    const assassino = sala.papeisDesignados.find((player) => player.id === assassinoId);
 
-    if (!validarEliminacao(sala, vitima, assassino)) {
-      return socket.emit('erro', { mensagem: 'Eliminação inválida.' });
+    if (!validateElimination(sala, vitima, assassino)) {
+      return socket.emit('erro', { mensagem: 'Eliminacao invalida.' });
     }
 
     vitima.vivo = false;
@@ -240,102 +251,69 @@ io.on('connection', (socket) => {
     sala.historicoMortes = sala.historicoMortes || [];
     sala.historicoMortes.push({ vitima: vitima.nome, assassino: assassino.nome });
 
-    // Regra do Coringa: Primeiro a morrer
     if (vitima.papel === 'Coringa' && sala.historicoMortes.length === 1) {
-      return io.to(codigo).emit('fimDeJogo', { vencedor: 'Coringa', mensagem: 'O Coringa foi o primeiro a ser eliminado e venceu o jogo!' });
+      return io.to(codigoSala).emit('fimDeJogo', { vencedor: 'Coringa', mensagem: 'O Coringa foi o primeiro a ser eliminado e venceu o jogo!' });
     }
 
-    // Regra do Coringa: Roubar papel
     if (assassino.papel === 'Coringa') {
       assassino.papel = vitima.papel;
-      io.to(assassino.id).emit('seuPapel', { papel: assassino.papel, objetivo: OBJETIVOS[assassino.papel] });
-      io.to(assassino.id).emit('mensagemSistema', { mensagem: `Você roubou o papel de ${vitima.papel}!` });
+      io.to(assassino.id).emit('seuPapel', { papel: getRoleLabel(assassino.papel), objetivo: getObjective(assassino.papel) });
+      io.to(assassino.id).emit('mensagemSistema', { mensagem: `Voce roubou o papel de ${vitima.papel}!` });
     }
 
-    // Regra do Caçador
-    if (assassino.papel === 'Caçador') {
+    if (assassino.papel === 'Cacador') {
       if (assassino.abates === 2) {
-        return io.to(codigo).emit('fimDeJogo', { vencedor: 'Caçador', mensagem: 'O Caçador conseguiu sua segunda presa e venceu o jogo!' });
+        return io.to(codigoSala).emit('fimDeJogo', { vencedor: 'Cacador', mensagem: 'O Cacador conseguiu sua segunda presa e venceu o jogo!' });
       }
       if (vitima.papel === 'Rei' && assassino.abates === 1) {
-        return io.to(codigo).emit('fimDeJogo', { vencedor: 'Assassinos', mensagem: 'O Caçador foi apressado e matou o Rei como primeira vítima. Os Assassinos vencem!' });
+        return io.to(codigoSala).emit('fimDeJogo', { vencedor: 'Assassinos', mensagem: 'O Cacador foi apressado e matou o Rei como primeira vitima. Os Assassinos vencem!' });
       }
     }
 
-    // Regra do Usurpador e Rei
     if (vitima.papel === 'Rei') {
       if (assassino.papel === 'Usurpador') {
         assassino.papel = 'Rei';
-        io.to(assassino.id).emit('seuPapel', { papel: 'Rei', objetivo: OBJETIVOS['Rei'] });
-        io.to(codigo).emit('mensagemSistema', { mensagem: 'O Rei caiu! Vida longa ao novo Rei (Usurpador)!' });
+        io.to(assassino.id).emit('seuPapel', { papel: getRoleLabel('Rei'), objetivo: getObjective('Rei') });
+        io.to(codigoSala).emit('mensagemSistema', { mensagem: 'O Rei caiu! Vida longa ao novo Rei (Usurpador)!' });
       } else {
-        return io.to(codigo).emit('fimDeJogo', { vencedor: 'Assassinos', mensagem: 'O Rei foi eliminado! Os Assassinos vencem a partida!' });
+        return io.to(codigoSala).emit('fimDeJogo', { vencedor: 'Assassinos', mensagem: 'O Rei foi eliminado! Os Assassinos vencem a partida!' });
       }
     }
 
-    // Regra dos Assassinos
-    const assassinosMortos = sala.papeisDesignados.filter(p => p.papel === 'Assassino' && !p.vivo).length;
+    const assassinosMortos = sala.papeisDesignados.filter((player) => player.papel === 'Assassino' && !player.vivo).length;
     if (assassinosMortos >= 2) {
-      return io.to(codigo).emit('fimDeJogo', { vencedor: 'Rei', mensagem: 'Dois Assassinos foram eliminados! A coroa está a salvo, o Rei vence!' });
+      return io.to(codigoSala).emit('fimDeJogo', { vencedor: 'Rei', mensagem: 'Dois Assassinos foram eliminados! A coroa esta a salvo, o Rei vence!' });
     }
 
-    // Confirma a morte para a tela do jogador que morreu
     socket.emit('morteConfirmada');
   });
 
   socket.on('sairDaSala', ({ codigo }) => {
-    const sala = saloes[codigo];
-    if (sala) {
-      const jogadorIndex = sala.jogadores.findIndex(j => j.id === socket.id);
-      if (jogadorIndex > -1) {
-        console.log(`Jogador ${sala.jogadores[jogadorIndex].nome} saiu da sala ${codigo}.`);
-        sala.jogadores.splice(jogadorIndex, 1);
+    const codigoSala = normalizeRoomCode(codigo);
+    const sala = saloes[codigoSala];
 
-        if (sala.jogadores.length === 0) {
-            delete saloes[codigo];
-            console.log(`Sala ${codigo} vazia e deletada.`);
-        } else {
-            io.to(codigo).emit('atualizarLobby', {
-                jogadores: sala.jogadores,
-                hostId: sala.hostId,
-                modoDeJogo: sala.modoDeJogo
-            });
-        }
+    if (sala) {
+      clearDisconnectTimer(sala, socket.id);
+      sala.jogadores = sala.jogadores.filter((player) => player.id !== socket.id);
+
+      if (sala.jogadores.length === 0) {
+        delete saloes[codigoSala];
+      } else {
+        emitLobby(codigoSala, sala);
       }
     }
-    socket.leave(codigo);
+
+    socket.leave(codigoSala);
   });
 
   socket.on('disconnect', () => {
-    console.log(`Usuário desconectado: ${socket.id}`);
-    for (const codigo in saloes) {
-      const sala = saloes[codigo];
-      const jogadorIndex = sala.jogadores.findIndex(j => j.id === socket.id);
+    const found = findRoomBySocket(socket.id);
+    if (!found) return;
 
-      if (jogadorIndex > -1) {
-        if (sala.hostId === socket.id) {
-          console.log(`Host da sala ${codigo} desconectou. Destruindo a sala.`);
-          io.to(codigo).emit('salaFechada', { mensagem: 'O host desconectou e a sala foi encerrada.' });
-          delete saloes[codigo];
-        } 
-        else {
-          console.log(`Jogador ${sala.jogadores[jogadorIndex].nome} desconectou da sala ${codigo}.`);
-          sala.jogadores.splice(jogadorIndex, 1);
-          
-          if (sala.jogadores.length === 0) {
-            delete saloes[codigo];
-            console.log(`Sala ${codigo} vazia e deletada.`);
-          } else {
-            io.to(codigo).emit('atualizarLobby', {
-                jogadores: sala.jogadores,
-                hostId: sala.hostId,
-                modoDeJogo: sala.modoDeJogo
-            });
-          }
-        }
-        break; 
-      }
-    }
+    const { codigo, sala, jogador } = found;
+    jogador.connected = false;
+    schedulePlayerRemoval(codigo, sala, jogador);
+    emitLobby(codigo, sala);
   });
 });
 

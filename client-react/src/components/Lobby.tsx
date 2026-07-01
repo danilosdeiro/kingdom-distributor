@@ -20,7 +20,7 @@ const TooltipWrapper = ({ children, text }: { children: React.ReactNode; text: s
   );
 };
 
-interface Jogador { id: string; nome: string; }
+interface Jogador { id: string; nome: string; connected?: boolean; }
 type ModoDeJogo = 'aleatorio' | 'convencional' | 'personalizado';
 type PapelSorteavel = 'Usurpador' | 'Caçador' | 'Coringa';
 
@@ -91,11 +91,16 @@ const handleCompartilhar = () => {
         toast.error(mensagem);
         navigate('/', { replace: true });
     };
+
+    const handleErro = ({ mensagem }: { mensagem: string }) => {
+      toast.error(mensagem);
+    };
     
     socket.on('atualizarLobby', handleAtualizarLobby);
     socket.on('seuPapel', handleSeuPapel);
     socket.on('voceFoiRemovido', handleVoceFoiRemovido);
     socket.on('salaFechada', handleSalaFechada);
+    socket.on('erro', handleErro);
     
     socket.emit('solicitarDadosSala', codigo);
 
@@ -104,6 +109,7 @@ const handleCompartilhar = () => {
       socket.off('seuPapel', handleSeuPapel);
       socket.off('voceFoiRemovido', handleVoceFoiRemovido);
       socket.off('salaFechada', handleSalaFechada);
+      socket.off('erro', handleErro);
     };
   }, [navigate, codigo]);
 
@@ -170,6 +176,7 @@ const handleCompartilhar = () => {
               <li key={jogador.id}>
                 <span className="player-name">{jogador.nome}</span>
                 <div className="player-actions">
+                  {jogador.connected === false && <span className="host-tag">Reconectando</span>}
                   {jogador.id === hostId && <span className="host-tag">👑 Host</span>}
                   {euSouOHost && jogador.id !== meuId && (<button className="remove-button" onClick={() => handleRemoverJogador(jogador.id)}>Remover</button>)}
                 </div>

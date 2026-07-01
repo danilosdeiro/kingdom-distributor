@@ -91,16 +91,22 @@ export function RoleView() {
       papelStorage.set(novoPapelInfo);
     };
 
+    const handleErro = ({ mensagem }: { mensagem: string }) => {
+      toast.error(mensagem);
+    };
+
     socket.on('morteConfirmada', handleMorteConfirmada);
     socket.on('mensagemSistema', handleMensagemSistema);
     socket.on('fimDeJogo', handleFimDeJogo);
     socket.on('seuPapel', handleSeuPapel);
+    socket.on('erro', handleErro);
 
     return () => {
       socket.off('morteConfirmada', handleMorteConfirmada);
       socket.off('mensagemSistema', handleMensagemSistema);
       socket.off('fimDeJogo', handleFimDeJogo);
       socket.off('seuPapel', handleSeuPapel);
+      socket.off('erro', handleErro);
     };
   }, [navigate]);
 
