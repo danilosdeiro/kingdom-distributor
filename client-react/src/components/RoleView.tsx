@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gameState } from '../services/gameState';
 import { socket } from '../services/socket';
+import { rejoinSavedRoom } from '../services/rejoinRoom';
 import { toast } from 'react-hot-toast';
 import './RoleView.css';
 
@@ -95,11 +96,19 @@ export function RoleView() {
       toast.error(mensagem);
     };
 
+    const handleConnect = () => {
+      setMeuId(socket.id ?? '');
+      rejoinSavedRoom();
+    };
+
     socket.on('morteConfirmada', handleMorteConfirmada);
     socket.on('mensagemSistema', handleMensagemSistema);
     socket.on('fimDeJogo', handleFimDeJogo);
     socket.on('seuPapel', handleSeuPapel);
     socket.on('erro', handleErro);
+    socket.on('connect', handleConnect);
+
+    handleConnect();
 
     return () => {
       socket.off('morteConfirmada', handleMorteConfirmada);
@@ -107,6 +116,7 @@ export function RoleView() {
       socket.off('fimDeJogo', handleFimDeJogo);
       socket.off('seuPapel', handleSeuPapel);
       socket.off('erro', handleErro);
+      socket.off('connect', handleConnect);
     };
   }, [navigate]);
 

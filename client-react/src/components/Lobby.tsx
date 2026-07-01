@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { socket } from '../services/socket';
 import { gameState } from '../services/gameState';
+import { rejoinSavedRoom } from '../services/rejoinRoom';
 import { toast } from 'react-hot-toast';
 import './Lobby.css';
 
@@ -95,14 +96,22 @@ const handleCompartilhar = () => {
     const handleErro = ({ mensagem }: { mensagem: string }) => {
       toast.error(mensagem);
     };
+
+    const handleConnect = () => {
+      setMeuId(socket.id ?? null);
+      if (!rejoinSavedRoom()) {
+        socket.emit('solicitarDadosSala', codigo);
+      }
+    };
     
     socket.on('atualizarLobby', handleAtualizarLobby);
     socket.on('seuPapel', handleSeuPapel);
     socket.on('voceFoiRemovido', handleVoceFoiRemovido);
     socket.on('salaFechada', handleSalaFechada);
     socket.on('erro', handleErro);
+    socket.on('connect', handleConnect);
     
-    socket.emit('solicitarDadosSala', codigo);
+    handleConnect();
 
     return () => {
       socket.off('atualizarLobby', handleAtualizarLobby);
@@ -110,6 +119,7 @@ const handleCompartilhar = () => {
       socket.off('voceFoiRemovido', handleVoceFoiRemovido);
       socket.off('salaFechada', handleSalaFechada);
       socket.off('erro', handleErro);
+      socket.off('connect', handleConnect);
     };
   }, [navigate, codigo]);
 
