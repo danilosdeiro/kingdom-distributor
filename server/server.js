@@ -4,14 +4,23 @@ const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
 const cors = require('cors');
+const crypto = require('crypto');
 
 const app = express();
-app.use(cors());
+
+const CLIENT_ORIGINS = (process.env.CLIENT_ORIGINS || 'http://localhost:5173,https://meukingdom.vercel.app')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(cors({ origin: CLIENT_ORIGINS }));
+app.get('/health', (_req, res) => res.json({ ok: true }));
+
 const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173", "https://meukingdom.vercel.app"],
+    origin: CLIENT_ORIGINS,
     methods: ["GET", "POST"]
   }
 });
@@ -30,6 +39,37 @@ const OBJETIVOS = {
 
 let saloes = {};
 
+function gerarCodigoSala() {
+  let codigoSala;
+
+  do {
+    codigoSala = crypto.randomBytes(3).toString('hex').slice(0, 4).toUpperCase();
+  } while (saloes[codigoSala]);
+
+  return codigoSala;
+}
+
+function embaralhar(lista) {
+  const embaralhada = [...lista];
+
+  for (let i = embaralhada.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(i + 1);
+    [embaralhada[i], embaralhada[j]] = [embaralhada[j], embaralhada[i]];
+  }
+
+  return embaralhada;
+}
+
+function validarEliminacao(sala, vitima, assassino) {
+  if (!sala || !sala.papeisDesignados) return false;
+  if (!vitima || !assassino) return false;
+  if (!vitima.vivo || !assassino.vivo) return false;
+  if (vitima.id === assassino.id) return false;
+
+  const jogadoresDaPartida = new Set(sala.papeisDesignados.map((jogador) => jogador.id));
+  return jogadoresDaPartida.has(vitima.id) && jogadoresDaPartida.has(assassino.id);
+}
+
 function getPapeis(numJogadores, modoDeJogo, papeisPersonalizados = []) {
   const PAPEIS_FIXOS = ['Rei', 'Cavaleiro', 'Assassino', 'Assassino'];
 
@@ -41,7 +81,7 @@ function getPapeis(numJogadores, modoDeJogo, papeisPersonalizados = []) {
   }
   
   const PAPEIS_SORTEAVEIS = ['Usurpador', 'Caçador', 'Coringa'];
-  const sorteaveisEmbaralhados = [...PAPEIS_SORTEAVEIS].sort(() => Math.random() - 0.5);
+  const sorteaveisEmbaralhados = embaralhar(PAPEIS_SORTEAVEIS);
   let papeisDaPartida = [...PAPEIS_FIXOS];
   const numeroDePapeisSorteados = numJogadores - PAPEIS_FIXOS.length;
   for (let i = 0; i < numeroDePapeisSorteados; i++) {
@@ -52,7 +92,7 @@ function getPapeis(numJogadores, modoDeJogo, papeisPersonalizados = []) {
 
 io.on('connection', (socket) => {
   socket.on('criarSala', ({ nome }) => {
-    const codigoSala = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const codigoSala = gerarCodigoSala();
     saloes[codigoSala] = { 
       hostId: socket.id, 
       jogadores: [{ id: socket.id, nome: nome }],
@@ -163,7 +203,7 @@ io.on('connection', (socket) => {
       const jogadores = sala.jogadores;
       const papeis = getPapeis(numeroDeJogadores, sala.modoDeJogo, papeisPersonalizados);
       
-      const papeisEmbaralhados = [...papeis].sort(() => Math.random() - 0.5);
+      const papeisEmbaralhados = embaralhar(papeis);
       jogadores.forEach((jogador, index) => {
         const papel = papeisEmbaralhados[index];
         const objetivo = OBJETIVOS[papel] || 'Nenhum objetivo específico.';
@@ -191,7 +231,9 @@ io.on('connection', (socket) => {
     const vitima = sala.papeisDesignados.find(p => p.id === socket.id);
     const assassino = sala.papeisDesignados.find(p => p.id === assassinoId);
 
-    if (!vitima || !assassino || !vitima.vivo) return;
+    if (!validarEliminacao(sala, vitima, assassino)) {
+      return socket.emit('erro', { mensagem: 'Eliminação inválida.' });
+    }
 
     vitima.vivo = false;
     assassino.abates += 1;

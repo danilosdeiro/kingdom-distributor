@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link, useParams } from 'react-router-dom'; // Adicionado useParams
+import { useNavigate, Link, useParams } from 'react-router-dom';
 import { socket } from '../services/socket';
 import { toast } from 'react-hot-toast';
 import './Home.css';
 
 import logoMeuKingdom from '../assets/meuking.png';
 
+interface Jogador {
+  id: string;
+  nome: string;
+}
+
 export function Home() {
-  const { codigoConvite } = useParams(); // 👇 Captura o código da URL (meukingdom.app/ABCD)
+  const { codigoConvite } = useParams();
   const [nome, setNome] = useState('');
   const [codigoSala, setCodigoSala] = useState('');
   const [temPapelSalvo, setTemPapelSalvo] = useState(false);
@@ -15,102 +20,108 @@ export function Home() {
 
   const navigate = useNavigate();
 
-  // Checa localStorage ao abrir
   useEffect(() => {
-    if(localStorage.getItem('salaAtual') && localStorage.getItem('meuNome')) {
-        setTemSalaSalva(true);
-    }
-    const papelSalvo = localStorage.getItem('ultimoPapel');
-    if (papelSalvo) setTemPapelSalvo(true);
+    setTemSalaSalva(Boolean(localStorage.getItem('salaAtual') && localStorage.getItem('meuNome')));
+    setTemPapelSalvo(Boolean(sessionStorage.getItem('ultimoPapel')));
   }, []);
 
   useEffect(() => {
-    // 👇 NOVA LÓGICA DE CONVITE: Se houver código na URL, preenche o input
-    if (codigoConvite && codigoConvite.toUpperCase() !== codigoSala) {
+    if (!codigoConvite) return;
+
     const codigoLimpo = codigoConvite.toUpperCase();
     setCodigoSala(codigoLimpo);
-    
-    // Usamos um ID fixo no toast para ele não se repetir
-    toast.success(`Sala ${codigoLimpo} detectada!`, { 
+    toast.success(`Sala ${codigoLimpo} detectada!`, {
       icon: '🔗',
-      id: 'convite-toast' // Isso impede que o React abra vários iguais
+      id: 'convite-toast',
     });
-  }
+  }, [codigoConvite]);
 
-    socket.on('salaCriada', ({ codigo, jogadores }) => {
+  useEffect(() => {
+    const handleSalaCriada = ({ codigo, jogadores }: { codigo: string; jogadores: Jogador[] }) => {
       localStorage.setItem('salaAtual', codigo);
       navigate(`/lobby/${codigo}`, { state: { jogadoresIniciais: jogadores } });
-    });
-    
-    socket.on('entradaComSucesso', () => {
-      // Usa o código da URL ou o que está no input
-      const salaDestino = (codigoConvite || codigoSala).toUpperCase();
-      navigate(`/lobby/${salaDestino}`, { state: { entrouNaSala: true } });
-    });
-    
-    socket.on('erro', ({ mensagem }) => { 
-      toast.error(mensagem); 
-    });
+    };
+
+    const handleEntradaComSucesso = () => {
+      const salaDestino = localStorage.getItem('salaAtual');
+      if (salaDestino) {
+        navigate(`/lobby/${salaDestino}`, { state: { entrouNaSala: true } });
+      }
+    };
+
+    const handleErro = ({ mensagem }: { mensagem: string }) => {
+      toast.error(mensagem);
+    };
+
+    socket.on('salaCriada', handleSalaCriada);
+    socket.on('entradaComSucesso', handleEntradaComSucesso);
+    socket.on('erro', handleErro);
 
     return () => {
-      socket.off('salaCriada');
-      socket.off('entradaComSucesso');
-      socket.off('erro');
+      socket.off('salaCriada', handleSalaCriada);
+      socket.off('entradaComSucesso', handleEntradaComSucesso);
+      socket.off('erro', handleErro);
     };
-  }, [navigate, codigoSala, codigoConvite]); // codigoConvite adicionado como dependência
+  }, [navigate]);
 
   const handleReconectar = () => {
     const codigo = localStorage.getItem('salaAtual');
     const nomeSalvo = localStorage.getItem('meuNome');
-    if(codigo && nomeSalvo) {
-       setCodigoSala(codigo);
-       setNome(nomeSalvo);
-       socket.emit('entrarSala', { codigo, nome: nomeSalvo });
+
+    if (codigo && nomeSalvo) {
+      setCodigoSala(codigo);
+      setNome(nomeSalvo);
+      socket.emit('entrarSala', { codigo, nome: nomeSalvo });
     }
-  }
+  };
 
   const handleCriarSala = () => {
     if (!nome.trim()) {
-      toast.error("Digite seu nome primeiro!");
+      toast.error('Digite seu nome primeiro!');
       return;
     }
-    localStorage.removeItem('ultimoPapel');
+
+    sessionStorage.removeItem('ultimoPapel');
     setTemPapelSalvo(false);
-    localStorage.setItem('meuNome', nome.trim()); 
+    localStorage.setItem('meuNome', nome.trim());
     socket.emit('criarSala', { nome: nome.trim() });
   };
 
   const handleEntrarSala = () => {
     if (!nome.trim() || !codigoSala.trim()) {
-      toast.error("Preencha nome e código!");
+      toast.error('Preencha nome e código!');
       return;
     }
-    localStorage.removeItem('ultimoPapel');
+
+    const codigoLimpo = codigoSala.trim().toUpperCase();
+
+    sessionStorage.removeItem('ultimoPapel');
     setTemPapelSalvo(false);
-    
     localStorage.setItem('meuNome', nome.trim());
-    localStorage.setItem('salaAtual', codigoSala.trim().toUpperCase());
-    
-    socket.emit('entrarSala', { 
-      codigo: codigoSala.trim().toUpperCase(), 
-      nome: nome.trim() 
+    localStorage.setItem('salaAtual', codigoLimpo);
+
+    socket.emit('entrarSala', {
+      codigo: codigoLimpo,
+      nome: nome.trim(),
     });
   };
 
-  const handleVerUltimoPapel = () => { navigate('/role'); };
+  const handleVerUltimoPapel = () => {
+    navigate('/role');
+  };
 
   return (
     <div className="home-container">
       <div className="title-container">
         <Link to="/" className="main-logo-link">
-          <img 
-            src={logoMeuKingdom} 
-            alt="Meu Kingdom" 
-            className="main-logo" 
+          <img
+            src={logoMeuKingdom}
+            alt="Meu Kingdom"
+            className="main-logo"
           />
         </Link>
       </div>
-      
+
       <div className="content-container">
         {temPapelSalvo && (
           <div className="card last-role-card" style={{ marginBottom: temSalaSalva ? '10px' : '20px' }}>
@@ -131,27 +142,27 @@ export function Home() {
         <div className="card primary-card-group">
           <div className="form-group">
             <label htmlFor="nome">Seu Nome</label>
-            <input 
-              id="nome" 
-              type="text" 
-              value={nome} 
-              onChange={(e) => setNome(e.target.value)} 
-              placeholder="Digite seu nome de jogador" 
+            <input
+              id="nome"
+              type="text"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              placeholder="Digite seu nome de jogador"
             />
           </div>
           <div className="form-group">
             <label htmlFor="codigo">Código da Sala</label>
-            <input 
-              id="codigo" 
-              type="text" 
-              value={codigoSala} 
-              onChange={(e) => setCodigoSala(e.target.value)} 
-              placeholder="Ex: ABCD" 
+            <input
+              id="codigo"
+              type="text"
+              value={codigoSala}
+              onChange={(e) => setCodigoSala(e.target.value)}
+              placeholder="Ex: ABCD"
             />
           </div>
-          <button 
-            className="primary-button" 
-            onClick={handleEntrarSala} 
+          <button
+            className="primary-button"
+            onClick={handleEntrarSala}
             disabled={!nome.trim() || !codigoSala.trim()}
           >
             Entrar na Sala
@@ -160,9 +171,9 @@ export function Home() {
 
         <div className="secondary-action">
           <p className="or-separator">ou</p>
-          <button 
+          <button
             className="secondary-button create-room-button"
-            onClick={handleCriarSala} 
+            onClick={handleCriarSala}
             disabled={!nome.trim()}
           >
             Crie uma Nova Sala

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { socket } from '../services/socket';
 import { gameState } from '../services/gameState';
 import { toast } from 'react-hot-toast';
@@ -36,7 +36,7 @@ const handleCompartilhar = () => {
   const urlConvite = `${window.location.origin}/${codigoLimpo}`;
   
   // No campo 'text', NÃO colocamos o link, pois o campo 'url' já vai adicioná-lo
-  const mensagem = `⚔️ *Meu Kingdom* ⚔️\nEntre na sala para receber seu papel secreto!`;
+  const mensagem = `⚔️ *Meu Kingdom* ⚔️\nEntre na sala para receber seu papel`;
 
   if (navigator.share) {
     navigator.share({
@@ -54,7 +54,6 @@ const handleCompartilhar = () => {
 };
   const { codigo } = useParams<{ codigo: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [jogadores, setJogadores] = useState<Jogador[]>([]);
   const [hostId, setHostId] = useState<string | null>(null);
@@ -63,7 +62,7 @@ const handleCompartilhar = () => {
   const [papeisPersonalizados, setPapeisPersonalizados] = useState<PapelSorteavel[]>([]);
   
   useEffect(() => {
-    if (!location.state) {
+    if (!codigo) {
       navigate('/', { replace: true });
       return;
     }
@@ -79,7 +78,7 @@ const handleCompartilhar = () => {
     
     const handleSeuPapel = (papelInfo: { papel: string; objetivo: string }) => {
       gameState.setMeuPapel(papelInfo);
-      localStorage.setItem('ultimoPapel', JSON.stringify(papelInfo));;
+      sessionStorage.setItem('ultimoPapel', JSON.stringify(papelInfo));
       navigate('/role', { replace: true });
     };
 
@@ -106,7 +105,7 @@ const handleCompartilhar = () => {
       socket.off('voceFoiRemovido', handleVoceFoiRemovido);
       socket.off('salaFechada', handleSalaFechada);
     };
-  }, [navigate, codigo, location.state]);
+  }, [navigate, codigo]);
 
   const handleSairDaSala = () => {
     socket.emit('sairDaSala', { codigo });
