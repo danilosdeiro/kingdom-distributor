@@ -18,6 +18,19 @@ interface PapelInfo {
   objetivo: string;
 }
 
+interface RevelacaoPapel {
+  id: string;
+  nome: string;
+  papel: string;
+  vivo: boolean;
+}
+
+interface GameResult {
+  vencedor: string;
+  mensagem: string;
+  revelacao?: RevelacaoPapel[];
+}
+
 const papelStorage = {
   get: () => sessionStorage.getItem('ultimoPapel'),
   set: (papelInfo: PapelInfo) => sessionStorage.setItem('ultimoPapel', JSON.stringify(papelInfo)),
@@ -32,6 +45,7 @@ export function RoleView() {
   const [papelVisivel, setPapelVisivel] = useState(false);
   const [jogadoresVivos, setJogadoresVivos] = useState<Jogador[]>([]);
   const [meuId, setMeuId] = useState('');
+  const [resultado, setResultado] = useState<GameResult | null>(null);
 
   const navigate = useNavigate();
 
@@ -73,17 +87,9 @@ export function RoleView() {
       toast(data.mensagem, { icon: '👑', duration: 5000 });
     };
 
-    const handleFimDeJogo = (data: { vencedor: string; mensagem: string }) => {
+    const handleFimDeJogo = (data: GameResult) => {
+      setResultado(data);
       toast.success(data.mensagem, { duration: 8000 });
-      setTimeout(() => {
-        papelStorage.clear();
-        const codigoDaSala = localStorage.getItem('salaAtual');
-        if (codigoDaSala) {
-          navigate(`/lobby/${codigoDaSala}`, { state: { entrouNaSala: true } });
-        } else {
-          navigate('/');
-        }
-      }, 5000);
     };
 
     const handleSeuPapel = (novoPapelInfo: PapelInfo) => {
@@ -92,9 +98,12 @@ export function RoleView() {
       papelStorage.set(novoPapelInfo);
     };
 
-    const handleAtualizarLobby = (dados: { jogadores: Jogador[] }) => {
+    const handleAtualizarLobby = (dados: { jogadores: Jogador[]; status?: string; resultado?: GameResult | null }) => {
       setJogadoresVivos(dados.jogadores);
       localStorage.setItem('jogadoresDaSala', JSON.stringify(dados.jogadores));
+      if (dados.status === 'finalizado' && dados.resultado) {
+        setResultado(dados.resultado);
+      }
     };
 
     const handleErro = ({ mensagem }: { mensagem: string }) => {
@@ -169,6 +178,41 @@ export function RoleView() {
 
   if (!meuPapel) {
     return <div className="role-container loading">Carregando...</div>;
+  }
+
+  if (resultado) {
+    return (
+      <div className="role-container">
+        <div className="role-card result-card">
+          <p>Fim de Jogo</p>
+          <h1>{resultado.vencedor}</h1>
+          <div className="objetivo">
+            <p>{resultado.mensagem}</p>
+          </div>
+
+          {resultado.revelacao && resultado.revelacao.length > 0 && (
+            <div className="role-reveal-list">
+              {resultado.revelacao.map((player) => (
+                <div className="role-reveal-item" key={player.id}>
+                  <span>{player.nome}</span>
+                  <strong>{player.papel}</strong>
+                  <em>{player.vivo ? 'Vivo' : 'Eliminado'}</em>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="role-actions">
+            <button className="back-button" onClick={voltarAoLobby}>
+              Voltar ao Lobby
+            </button>
+            <button className="back-button exit-role-button" onClick={sairDoJogo}>
+              Sair do Jogo
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (estouMorto) {

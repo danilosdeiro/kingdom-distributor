@@ -75,6 +75,8 @@ test('lobby payload exposes stable player ids but hides socket ids', () => {
   const payload = getLobbyPayload({
     hostId: 'player-host',
     modoDeJogo: 'aleatorio',
+    status: 'em_jogo',
+    resultado: null,
     jogadores: [
       { id: 'player-host', socketId: 'socket-host', nome: 'Host', connected: true },
       { id: 'player-2', socketId: 'socket-2', nome: 'Guest', connected: false },
@@ -84,6 +86,8 @@ test('lobby payload exposes stable player ids but hides socket ids', () => {
   assert.deepEqual(payload, {
     hostId: 'player-host',
     modoDeJogo: 'aleatorio',
+    status: 'em_jogo',
+    resultado: null,
     jogadores: [
       { id: 'player-host', nome: 'Host', connected: true },
       { id: 'player-2', nome: 'Guest', connected: false },

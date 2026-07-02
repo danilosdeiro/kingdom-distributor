@@ -104,6 +104,28 @@ function findRoomBySocket(socketId) {
   return null;
 }
 
+function getRoleReveal(sala) {
+  return (sala.papeisDesignados || []).map((player) => ({
+    id: player.id,
+    nome: player.nome,
+    papel: getRoleLabel(player.papel),
+    vivo: player.vivo,
+  }));
+}
+
+function finishGame(codigo, sala, vencedor, mensagem) {
+  const resultado = {
+    vencedor,
+    mensagem,
+    revelacao: getRoleReveal(sala),
+  };
+
+  sala.status = 'finalizado';
+  sala.resultado = resultado;
+  io.to(codigo).emit('fimDeJogo', resultado);
+  return resultado;
+}
+
 io.on('connection', (socket) => {
   socket.on('criarSala', ({ nome, playerId }) => {
     const nomeLimpo = normalizePlayerName(nome);
@@ -117,6 +139,8 @@ io.on('connection', (socket) => {
       hostId: jogadorId,
       jogadores: [{ id: jogadorId, socketId: socket.id, nome: nomeLimpo, connected: true }],
       modoDeJogo: 'aleatorio',
+      status: 'lobby',
+      resultado: null,
       disconnectTimers: {},
     };
 
@@ -223,6 +247,8 @@ io.on('connection', (socket) => {
     }
 
     sala.historicoMortes = [];
+    sala.status = 'em_jogo';
+    sala.resultado = null;
 
     const jogadores = sala.jogadores;
     const papeis = getRoles(numeroDeJogadores, sala.modoDeJogo, papeisPersonalizados);
@@ -248,6 +274,10 @@ io.on('connection', (socket) => {
     const sala = saloes[codigoSala];
     if (!sala || !sala.papeisDesignados) return;
 
+    if (sala.status === 'finalizado') {
+      return socket.emit('fimDeJogo', sala.resultado);
+    }
+
     const vitimaId = normalizePlayerId(vitimaPlayerId);
     const vitima = sala.papeisDesignados.find((player) => player.id === vitimaId || player.socketId === socket.id);
     const nomeAssassino = normalizePlayerName(assassinoNome);
@@ -265,7 +295,7 @@ io.on('connection', (socket) => {
     sala.historicoMortes.push({ vitima: vitima.nome, assassino: assassino.nome });
 
     if (vitima.papel === 'Coringa' && sala.historicoMortes.length === 1) {
-      return io.to(codigoSala).emit('fimDeJogo', { vencedor: 'Coringa', mensagem: 'O Coringa foi o primeiro a ser eliminado e venceu o jogo!' });
+      return finishGame(codigoSala, sala, 'Coringa', 'O Coringa foi o primeiro a ser eliminado e venceu o jogo!');
     }
 
     if (assassino.papel === 'Coringa') {
@@ -276,10 +306,10 @@ io.on('connection', (socket) => {
 
     if (assassino.papel === 'Cacador') {
       if (assassino.abates === 2) {
-        return io.to(codigoSala).emit('fimDeJogo', { vencedor: 'Cacador', mensagem: 'O Cacador conseguiu sua segunda presa e venceu o jogo!' });
+        return finishGame(codigoSala, sala, 'Cacador', 'O Cacador conseguiu sua segunda presa e venceu o jogo!');
       }
       if (vitima.papel === 'Rei' && assassino.abates === 1) {
-        return io.to(codigoSala).emit('fimDeJogo', { vencedor: 'Assassinos', mensagem: 'O Cacador foi apressado e matou o Rei como primeira vitima. Os Assassinos vencem!' });
+        return finishGame(codigoSala, sala, 'Assassinos', 'O Cacador foi apressado e matou o Rei como primeira vitima. Os Assassinos vencem!');
       }
     }
 
@@ -289,13 +319,13 @@ io.on('connection', (socket) => {
         io.to(assassino.socketId).emit('seuPapel', { papel: getRoleLabel('Rei'), objetivo: getObjective('Rei') });
         io.to(codigoSala).emit('mensagemSistema', { mensagem: 'O Rei caiu! Vida longa ao novo Rei (Usurpador)!' });
       } else {
-        return io.to(codigoSala).emit('fimDeJogo', { vencedor: 'Assassinos', mensagem: 'O Rei foi eliminado! Os Assassinos vencem a partida!' });
+        return finishGame(codigoSala, sala, 'Assassinos', 'O Rei foi eliminado! Os Assassinos vencem a partida!');
       }
     }
 
     const assassinosMortos = sala.papeisDesignados.filter((player) => player.papel === 'Assassino' && !player.vivo).length;
     if (assassinosMortos >= 2) {
-      return io.to(codigoSala).emit('fimDeJogo', { vencedor: 'Rei', mensagem: 'Dois Assassinos foram eliminados! A coroa esta a salvo, o Rei vence!' });
+      return finishGame(codigoSala, sala, 'Rei', 'Dois Assassinos foram eliminados! A coroa esta a salvo, o Rei vence!');
     }
 
     socket.emit('morteConfirmada');

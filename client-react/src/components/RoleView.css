@@ -70,6 +70,47 @@
   color: #fff;
 }
 
+.result-card h1 {
+  margin-bottom: 20px;
+}
+
+.role-reveal-list {
+  display: grid;
+  gap: 8px;
+  margin: 20px 0;
+  text-align: left;
+}
+
+.role-reveal-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.role-reveal-item span {
+  color: #f2f2f2;
+  font-weight: 700;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.role-reveal-item strong {
+  color: #E6D2AA;
+  text-align: right;
+}
+
+.role-reveal-item em {
+  grid-column: 1 / -1;
+  color: #9da3ad;
+  font-size: 0.85rem;
+  font-style: normal;
+}
+
 
 @media (max-width: 600px) {
   .role-card {

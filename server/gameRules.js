@@ -111,6 +111,8 @@ function getLobbyPayload(room) {
     })),
     hostId: room.hostId,
     modoDeJogo: room.modoDeJogo,
+    status: room.status,
+    resultado: room.resultado,
   };
 }
 
