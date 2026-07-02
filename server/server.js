@@ -328,6 +328,7 @@ io.on('connection', (socket) => {
       return finishGame(codigoSala, sala, 'Rei', 'Dois Assassinos foram eliminados! A coroa esta a salvo, o Rei vence!');
     }
 
+    emitLobby(codigoSala, sala);
     socket.emit('morteConfirmada');
   });
 

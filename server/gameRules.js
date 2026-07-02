@@ -103,11 +103,16 @@ function validateElimination(room, victim, killer) {
 }
 
 function getLobbyPayload(room) {
+  const assignedRolesByPlayerId = new Map(
+    (room.papeisDesignados || []).map((player) => [player.id, player])
+  );
+
   return {
     jogadores: room.jogadores.map((player) => ({
       id: player.id,
       nome: player.nome,
       connected: player.connected,
+      vivo: assignedRolesByPlayerId.get(player.id)?.vivo ?? true,
     })),
     hostId: room.hostId,
     modoDeJogo: room.modoDeJogo,

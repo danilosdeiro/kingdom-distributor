@@ -34,6 +34,80 @@
 .objetivo { background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid rgba(255, 255, 255, 0.1); }
 .objetivo h3 { margin-top: 0; color: #E6D2AA; }
 .warning { font-weight: bold; color: #e74c3c !important; }
+
+.players-status-panel {
+  margin: 20px 0 4px;
+  padding: 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  text-align: left;
+}
+
+.players-status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.players-status-header h2 {
+  margin: 0;
+  color: #E6D2AA;
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+}
+
+.players-status-header span {
+  color: #bdc3c7;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.players-status-list {
+  display: grid;
+  gap: 8px;
+}
+
+.player-status-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.player-status-name {
+  color: #f2f2f2;
+  font-weight: 700;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.player-status-badge {
+  color: #1f2b1f;
+  background: #8fd18f;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.player-status-item.is-dead .player-status-name {
+  color: #8f969f;
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+
+.player-status-item.is-dead .player-status-badge {
+  color: #f4d9d9;
+  background: rgba(211, 47, 47, 0.28);
+}
+
 .back-button {
   width: 100%;
   padding: 14px;

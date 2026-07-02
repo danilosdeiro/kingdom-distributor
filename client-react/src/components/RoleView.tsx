@@ -11,6 +11,7 @@ interface Jogador {
   id: string;
   nome: string;
   connected?: boolean;
+  vivo?: boolean;
 }
 
 interface PapelInfo {
@@ -176,6 +177,34 @@ export function RoleView() {
     navigate('/');
   };
 
+  const renderListaJogadores = () => {
+    if (jogadoresVivos.length === 0) return null;
+
+    const jogadoresAindaVivos = jogadoresVivos.filter((jogador) => jogador.vivo !== false).length;
+
+    return (
+      <section className="players-status-panel" aria-label="Jogadores na partida">
+        <div className="players-status-header">
+          <h2>Jogadores</h2>
+          <span>{jogadoresAindaVivos}/{jogadoresVivos.length} vivos</span>
+        </div>
+
+        <div className="players-status-list">
+          {jogadoresVivos.map((jogador) => {
+            const eliminado = jogador.vivo === false;
+
+            return (
+              <div className={`player-status-item ${eliminado ? 'is-dead' : ''}`} key={jogador.id}>
+                <span className="player-status-name">{jogador.nome}</span>
+                <span className="player-status-badge">{eliminado ? 'Eliminado' : 'Vivo'}</span>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    );
+  };
+
   if (!meuPapel) {
     return <div className="role-container loading">Carregando...</div>;
   }
@@ -221,6 +250,7 @@ export function RoleView() {
         <div className="role-card" style={{ border: '1px solid #d32f2f' }}>
           <h1 style={{ color: '#d32f2f' }}>ELIMINADO</h1>
           <p>Você está morto. Aguarde o fim da partida em silêncio.</p>
+          {renderListaJogadores()}
           <div className="role-actions">
             <button className="back-button" onClick={voltarAoLobby}>
               Voltar ao Lobby
@@ -263,6 +293,8 @@ export function RoleView() {
 
         <p className="warning">Não revele seu papel a ninguém!</p>
 
+        {renderListaJogadores()}
+
         <button
           className="back-button"
           style={{ borderColor: '#d32f2f', color: '#d32f2f', marginTop: '30px' }}
@@ -293,7 +325,7 @@ export function RoleView() {
               >
                 <option value="">Selecione na lista...</option>
                 {jogadoresVivos
-                  .filter((jogador) => jogador.id !== meuId)
+                  .filter((jogador) => jogador.id !== meuId && jogador.vivo !== false)
                   .map((jogador) => (
                     <option key={jogador.id} value={jogador.id}>
                       {jogador.nome}

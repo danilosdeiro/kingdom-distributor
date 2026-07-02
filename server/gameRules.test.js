@@ -81,6 +81,10 @@ test('lobby payload exposes stable player ids but hides socket ids', () => {
       { id: 'player-host', socketId: 'socket-host', nome: 'Host', connected: true },
       { id: 'player-2', socketId: 'socket-2', nome: 'Guest', connected: false },
     ],
+    papeisDesignados: [
+      { id: 'player-host', vivo: true },
+      { id: 'player-2', vivo: false },
+    ],
   });
 
   assert.deepEqual(payload, {
@@ -89,8 +93,8 @@ test('lobby payload exposes stable player ids but hides socket ids', () => {
     status: 'em_jogo',
     resultado: null,
     jogadores: [
-      { id: 'player-host', nome: 'Host', connected: true },
-      { id: 'player-2', nome: 'Guest', connected: false },
+      { id: 'player-host', nome: 'Host', connected: true, vivo: true },
+      { id: 'player-2', nome: 'Guest', connected: false, vivo: false },
     ],
   });
 });
