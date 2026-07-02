@@ -234,13 +234,16 @@ io.on('connection', (socket) => {
     }));
   });
 
-  socket.on('jogadorEliminado', ({ codigo, assassinoId }) => {
+  socket.on('jogadorEliminado', ({ codigo, assassinoId, assassinoNome }) => {
     const codigoSala = normalizeRoomCode(codigo);
     const sala = saloes[codigoSala];
     if (!sala || !sala.papeisDesignados) return;
 
     const vitima = sala.papeisDesignados.find((player) => player.id === socket.id);
-    const assassino = sala.papeisDesignados.find((player) => player.id === assassinoId);
+    const nomeAssassino = normalizePlayerName(assassinoNome);
+    const assassino = sala.papeisDesignados.find((player) => (
+      player.id === assassinoId || (nomeAssassino && player.nome === nomeAssassino)
+    ));
 
     if (!validateElimination(sala, vitima, assassino)) {
       return socket.emit('erro', { mensagem: 'Eliminacao invalida.' });

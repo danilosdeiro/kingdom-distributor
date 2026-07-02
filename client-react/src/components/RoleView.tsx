@@ -9,6 +9,7 @@ import './RoleView.css';
 interface Jogador {
   id: string;
   nome: string;
+  connected?: boolean;
 }
 
 interface PapelInfo {
@@ -92,6 +93,11 @@ export function RoleView() {
       papelStorage.set(novoPapelInfo);
     };
 
+    const handleAtualizarLobby = (dados: { jogadores: Jogador[] }) => {
+      setJogadoresVivos(dados.jogadores);
+      localStorage.setItem('jogadoresDaSala', JSON.stringify(dados.jogadores));
+    };
+
     const handleErro = ({ mensagem }: { mensagem: string }) => {
       toast.error(mensagem);
     };
@@ -105,6 +111,7 @@ export function RoleView() {
     socket.on('mensagemSistema', handleMensagemSistema);
     socket.on('fimDeJogo', handleFimDeJogo);
     socket.on('seuPapel', handleSeuPapel);
+    socket.on('atualizarLobby', handleAtualizarLobby);
     socket.on('erro', handleErro);
     socket.on('connect', handleConnect);
 
@@ -115,6 +122,7 @@ export function RoleView() {
       socket.off('mensagemSistema', handleMensagemSistema);
       socket.off('fimDeJogo', handleFimDeJogo);
       socket.off('seuPapel', handleSeuPapel);
+      socket.off('atualizarLobby', handleAtualizarLobby);
       socket.off('erro', handleErro);
       socket.off('connect', handleConnect);
     };
@@ -127,10 +135,12 @@ export function RoleView() {
     }
 
     const codigoSala = localStorage.getItem('salaAtual');
+    const assassinoSelecionado = jogadoresVivos.find((jogador) => jogador.id === quemMeMatouId);
 
     socket.emit('jogadorEliminado', {
       codigo: codigoSala,
       assassinoId: quemMeMatouId,
+      assassinoNome: assassinoSelecionado?.nome,
     });
     setModalMorteAberto(false);
   };
