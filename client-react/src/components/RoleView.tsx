@@ -186,7 +186,7 @@ export function RoleView() {
       <section className="players-status-panel" aria-label="Jogadores na partida">
         <div className="players-status-header">
           <h2>Jogadores</h2>
-          <span>{jogadoresAindaVivos}/{jogadoresVivos.length} vivos</span>
+          <span>{jogadoresAindaVivos}/{jogadoresVivos.length} em jogo</span>
         </div>
 
         <div className="players-status-list">
@@ -194,9 +194,13 @@ export function RoleView() {
             const eliminado = jogador.vivo === false;
 
             return (
-              <div className={`player-status-item ${eliminado ? 'is-dead' : ''}`} key={jogador.id}>
+              <div
+                className={`player-status-item ${eliminado ? 'is-dead' : ''}`}
+                key={jogador.id}
+                aria-label={`${jogador.nome} ${eliminado ? 'eliminado' : 'em jogo'}`}
+              >
                 <span className="player-status-name">{jogador.nome}</span>
-                <span className="player-status-badge">{eliminado ? 'Eliminado' : 'Vivo'}</span>
+                <span className="player-status-marker" aria-hidden="true" />
               </div>
             );
           })}
