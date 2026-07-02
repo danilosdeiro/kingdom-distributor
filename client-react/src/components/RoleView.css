@@ -49,6 +49,27 @@
 }
 .back-button:hover { background-color: #B89B67; color: #121212; }
 
+.role-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.role-actions .back-button {
+  margin-top: 0;
+}
+
+.exit-role-button {
+  border-color: #777;
+  color: #bbb;
+}
+
+.exit-role-button:hover {
+  background-color: #d32f2f;
+  border-color: #d32f2f;
+  color: #fff;
+}
+
 
 @media (max-width: 600px) {
   .role-card {

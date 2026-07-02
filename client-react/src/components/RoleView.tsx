@@ -145,6 +145,28 @@ export function RoleView() {
     setModalMorteAberto(false);
   };
 
+  const voltarAoLobby = () => {
+    const codigoSala = localStorage.getItem('salaAtual');
+    if (codigoSala) {
+      navigate(`/lobby/${codigoSala}`, { state: { voltouDaPartida: true } });
+    } else {
+      navigate('/');
+    }
+  };
+
+  const sairDoJogo = () => {
+    const codigoSala = localStorage.getItem('salaAtual');
+    if (codigoSala) {
+      socket.emit('sairDaSala', { codigo: codigoSala });
+    }
+
+    papelStorage.clear();
+    localStorage.removeItem('salaAtual');
+    localStorage.removeItem('jogadoresDaSala');
+    localStorage.removeItem('meuId');
+    navigate('/');
+  };
+
   if (!meuPapel) {
     return <div className="role-container loading">Carregando...</div>;
   }
@@ -155,6 +177,14 @@ export function RoleView() {
         <div className="role-card" style={{ border: '1px solid #d32f2f' }}>
           <h1 style={{ color: '#d32f2f' }}>ELIMINADO</h1>
           <p>Você está morto. Aguarde o fim da partida em silêncio.</p>
+          <div className="role-actions">
+            <button className="back-button" onClick={voltarAoLobby}>
+              Voltar ao Lobby
+            </button>
+            <button className="back-button exit-role-button" onClick={sairDoJogo}>
+              Sair do Jogo
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -196,6 +226,15 @@ export function RoleView() {
         >
           Fui Eliminado
         </button>
+
+        <div className="role-actions">
+          <button className="back-button" onClick={voltarAoLobby}>
+            Voltar ao Lobby
+          </button>
+          <button className="back-button exit-role-button" onClick={sairDoJogo}>
+            Sair do Jogo
+          </button>
+        </div>
 
         {modalMorteAberto && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
