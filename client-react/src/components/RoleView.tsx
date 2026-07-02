@@ -4,6 +4,7 @@ import { gameState } from '../services/gameState';
 import { socket } from '../services/socket';
 import { rejoinSavedRoom } from '../services/rejoinRoom';
 import { getPlayerId } from '../services/playerIdentity';
+import { clearRoomSession } from '../services/roomSession';
 import { toast } from 'react-hot-toast';
 import './RoleView.css';
 
@@ -170,10 +171,7 @@ export function RoleView() {
       socket.emit('sairDaSala', { codigo: codigoSala });
     }
 
-    papelStorage.clear();
-    localStorage.removeItem('salaAtual');
-    localStorage.removeItem('jogadoresDaSala');
-    localStorage.removeItem('meuId');
+    clearRoomSession();
     navigate('/');
   };
 

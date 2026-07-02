@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, useParams } from 'react-router-dom';
 import { socket } from '../services/socket';
 import { getPlayerId } from '../services/playerIdentity';
+import { clearRoomSession } from '../services/roomSession';
 import { toast } from 'react-hot-toast';
 import './Home.css';
 
@@ -52,6 +53,11 @@ export function Home() {
 
     const handleErro = ({ mensagem }: { mensagem: string }) => {
       toast.error(mensagem);
+      if (mensagem.toLowerCase().includes('sala nao encontrada')) {
+        clearRoomSession();
+        setTemSalaSalva(false);
+        setTemPapelSalvo(false);
+      }
     };
 
     socket.on('salaCriada', handleSalaCriada);
@@ -82,8 +88,9 @@ export function Home() {
       return;
     }
 
-    sessionStorage.removeItem('ultimoPapel');
+    clearRoomSession();
     setTemPapelSalvo(false);
+    setTemSalaSalva(false);
     localStorage.setItem('meuNome', nome.trim());
     socket.emit('criarSala', { nome: nome.trim(), playerId: getPlayerId() });
   };
@@ -96,8 +103,9 @@ export function Home() {
 
     const codigoLimpo = codigoSala.trim().toUpperCase();
 
-    sessionStorage.removeItem('ultimoPapel');
+    clearRoomSession();
     setTemPapelSalvo(false);
+    setTemSalaSalva(false);
     localStorage.setItem('meuNome', nome.trim());
     localStorage.setItem('salaAtual', codigoLimpo);
 

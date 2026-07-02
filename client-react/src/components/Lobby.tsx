@@ -4,6 +4,7 @@ import { socket } from '../services/socket';
 import { gameState } from '../services/gameState';
 import { rejoinSavedRoom } from '../services/rejoinRoom';
 import { getPlayerId } from '../services/playerIdentity';
+import { clearRoomSession } from '../services/roomSession';
 import { toast } from 'react-hot-toast';
 import './Lobby.css';
 
@@ -126,6 +127,7 @@ const handleCompartilhar = () => {
 
   const handleSairDaSala = () => {
     socket.emit('sairDaSala', { codigo });
+    clearRoomSession();
     navigate('/');
   };
 
