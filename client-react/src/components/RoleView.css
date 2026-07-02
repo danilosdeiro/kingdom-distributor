@@ -3,7 +3,8 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  padding: 20px;
+  min-height: 100dvh;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   font-family: sans-serif;
   box-sizing: border-box;
 }
@@ -16,8 +17,8 @@
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #e0e0e0;
-  padding: 40px;
-  border-radius: 15px;
+  padding: clamp(22px, 5vw, 40px);
+  border-radius: 12px;
   box-shadow: 0 10px 20px rgba(0,0,0,0.4);
   text-align: center;
 }
@@ -34,6 +35,22 @@
 .objetivo { background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid rgba(255, 255, 255, 0.1); }
 .objetivo h3 { margin-top: 0; color: #E6D2AA; }
 .warning { font-weight: bold; color: #e74c3c !important; }
+
+.role-hidden-panel {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 18px 0;
+  padding: 18px;
+  border: 2px dashed #555;
+  border-radius: 8px;
+}
+
+.role-hidden-panel p {
+  margin: 0;
+  color: #888;
+}
 
 .players-status-panel {
   margin: 20px 0 4px;
@@ -128,6 +145,27 @@
 }
 .back-button:hover { background-color: #B89B67; color: #121212; }
 
+.reveal-role-button {
+  margin-bottom: 15px;
+}
+
+.reveal-role-button.is-highlighted {
+  background-color: #B89B67;
+  color: #121212;
+}
+
+.danger-action-button {
+  border-color: #d32f2f;
+  color: #ff7676;
+  margin-top: 24px;
+}
+
+.danger-action-button:hover {
+  background-color: #d32f2f;
+  border-color: #d32f2f;
+  color: #fff;
+}
+
 .role-actions {
   display: grid;
   gap: 10px;
@@ -192,10 +230,66 @@
 
 
 @media (max-width: 600px) {
-  .role-card {
-    padding: 25px;
+  .role-container {
+    align-items: flex-start;
+    padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
   }
+
+  .role-card {
+    padding: 18px;
+    border-radius: 10px;
+  }
+
+  .role-card p {
+    font-size: 1rem;
+  }
+
   .role-card h1 {
-    font-size: 2.5rem;
+    font-size: clamp(2rem, 12vw, 2.8rem);
+    margin-bottom: 18px;
+  }
+
+  .objetivo {
+    padding: 14px;
+    margin-bottom: 18px;
+  }
+
+  .role-hidden-panel {
+    min-height: 150px;
+    margin: 14px 0;
+  }
+
+  .players-status-panel {
+    margin-top: 14px;
+    padding: 10px;
+  }
+
+  .players-status-header {
+    margin-bottom: 8px;
+  }
+
+  .players-status-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .player-status-item {
+    min-height: 34px;
+    padding: 7px 8px;
+  }
+
+  .player-status-name {
+    font-size: 0.92rem;
+  }
+
+  .back-button {
+    min-height: 46px;
+    padding: 12px;
+    margin-top: 14px;
+  }
+
+  .role-actions {
+    gap: 8px;
+    margin-top: 14px;
   }
 }

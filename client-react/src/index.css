@@ -35,3 +35,10 @@ body {
 .main-content {
   flex-grow: 1;
 }
+
+@media (max-width: 700px) {
+  .app-layout {
+    background-attachment: scroll;
+    min-height: 100dvh;
+  }
+}

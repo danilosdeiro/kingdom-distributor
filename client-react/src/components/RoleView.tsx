@@ -282,14 +282,13 @@ export function RoleView() {
             </div>
           </>
         ) : (
-          <div style={{ height: '250px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '20px 0', border: '2px dashed #555', borderRadius: '10px' }}>
-            <p style={{ margin: 0, color: '#888' }}>Toque no botão abaixo para revelar o seu papel.</p>
+          <div className="role-hidden-panel">
+            <p>Toque no botão abaixo para revelar o seu papel.</p>
           </div>
         )}
 
         <button
-          className="back-button"
-          style={{ marginBottom: '15px', backgroundColor: papelVisivel ? 'transparent' : '#B89B67', color: papelVisivel ? '#B89B67' : '#121212' }}
+          className={`back-button reveal-role-button ${papelVisivel ? '' : 'is-highlighted'}`}
           onClick={() => setPapelVisivel(!papelVisivel)}
         >
           {papelVisivel ? 'Esconder Meu Papel' : 'Revelar Meu Papel'}
@@ -300,8 +299,7 @@ export function RoleView() {
         {renderListaJogadores()}
 
         <button
-          className="back-button"
-          style={{ borderColor: '#d32f2f', color: '#d32f2f', marginTop: '30px' }}
+          className="back-button danger-action-button"
           onClick={() => setModalMorteAberto(true)}
         >
           Fui Eliminado
