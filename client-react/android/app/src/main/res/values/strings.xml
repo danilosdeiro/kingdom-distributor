@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MeuKingdom</string>
+    <string name="title_activity_main">MeuKingdom</string>
+    <string name="package_name">com.meukingdom.app</string>
+    <string name="custom_url_scheme">com.meukingdom.app</string>
+</resources>

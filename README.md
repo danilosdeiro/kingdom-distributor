@@ -44,7 +44,7 @@ VITE_BACKEND_URL=http://localhost:3000
 Exemplo:
 
 ```bash
-CLIENT_ORIGINS=http://localhost:5173,https://meukingdom.vercel.app
+CLIENT_ORIGINS=http://localhost:5173,https://meukingdom.vercel.app,https://localhost,capacitor://localhost
 ```
 
 ### Frontend
