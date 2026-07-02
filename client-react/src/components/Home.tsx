@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useParams } from 'react-router-dom';
 import { socket } from '../services/socket';
+import { getPlayerId } from '../services/playerIdentity';
 import { toast } from 'react-hot-toast';
 import './Home.css';
 
@@ -71,7 +72,7 @@ export function Home() {
     if (codigo && nomeSalvo) {
       setCodigoSala(codigo);
       setNome(nomeSalvo);
-      socket.emit('entrarSala', { codigo, nome: nomeSalvo });
+      socket.emit('entrarSala', { codigo, nome: nomeSalvo, playerId: getPlayerId() });
     }
   };
 
@@ -84,7 +85,7 @@ export function Home() {
     sessionStorage.removeItem('ultimoPapel');
     setTemPapelSalvo(false);
     localStorage.setItem('meuNome', nome.trim());
-    socket.emit('criarSala', { nome: nome.trim() });
+    socket.emit('criarSala', { nome: nome.trim(), playerId: getPlayerId() });
   };
 
   const handleEntrarSala = () => {
@@ -103,6 +104,7 @@ export function Home() {
     socket.emit('entrarSala', {
       codigo: codigoLimpo,
       nome: nome.trim(),
+      playerId: getPlayerId(),
     });
   };
 

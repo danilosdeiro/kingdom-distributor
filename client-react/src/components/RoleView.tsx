@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { gameState } from '../services/gameState';
 import { socket } from '../services/socket';
 import { rejoinSavedRoom } from '../services/rejoinRoom';
+import { getPlayerId } from '../services/playerIdentity';
 import { toast } from 'react-hot-toast';
 import './RoleView.css';
 
@@ -44,9 +45,7 @@ export function RoleView() {
       }
     }
 
-    if (socket.id) {
-      setMeuId(socket.id);
-    }
+    setMeuId(getPlayerId());
 
     let papelInfo = gameState.getMeuPapel();
     if (!papelInfo) {
@@ -103,7 +102,7 @@ export function RoleView() {
     };
 
     const handleConnect = () => {
-      setMeuId(socket.id ?? '');
+      setMeuId(getPlayerId());
       rejoinSavedRoom();
     };
 
@@ -139,6 +138,7 @@ export function RoleView() {
 
     socket.emit('jogadorEliminado', {
       codigo: codigoSala,
+      vitimaPlayerId: getPlayerId(),
       assassinoId: quemMeMatouId,
       assassinoNome: assassinoSelecionado?.nome,
     });

@@ -45,6 +45,10 @@ function normalizePlayerName(name) {
   return String(name || '').trim().slice(0, 40);
 }
 
+function normalizePlayerId(playerId) {
+  return String(playerId || '').trim().slice(0, 80);
+}
+
 function generateRoomCode(roomExists) {
   let code;
 
@@ -100,7 +104,11 @@ function validateElimination(room, victim, killer) {
 
 function getLobbyPayload(room) {
   return {
-    jogadores: room.jogadores,
+    jogadores: room.jogadores.map((player) => ({
+      id: player.id,
+      nome: player.nome,
+      connected: player.connected,
+    })),
     hostId: room.hostId,
     modoDeJogo: room.modoDeJogo,
   };
@@ -118,6 +126,7 @@ module.exports = {
   getRoleLabel,
   getRoles,
   normalizePlayerName,
+  normalizePlayerId,
   normalizeRole,
   normalizeRoomCode,
   shuffle,

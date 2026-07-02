@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { socket } from '../services/socket';
 import { gameState } from '../services/gameState';
 import { rejoinSavedRoom } from '../services/rejoinRoom';
+import { getPlayerId } from '../services/playerIdentity';
 import { toast } from 'react-hot-toast';
 import './Lobby.css';
 
@@ -71,10 +72,10 @@ const handleCompartilhar = () => {
     const handleAtualizarLobby = (dados: { jogadores: Jogador[], hostId: string, modoDeJogo: ModoDeJogo }) => {
       setJogadores(dados.jogadores);
       setHostId(dados.hostId);
-      setMeuId(socket.id ?? null);
+      setMeuId(getPlayerId());
       if (dados.modoDeJogo) setModoDeJogo(dados.modoDeJogo);
       localStorage.setItem('jogadoresDaSala', JSON.stringify(dados.jogadores));
-      localStorage.setItem('meuId', socket.id ?? '');
+      localStorage.setItem('meuId', getPlayerId());
     };
     
     const handleSeuPapel = (papelInfo: { papel: string; objetivo: string }) => {
@@ -98,7 +99,7 @@ const handleCompartilhar = () => {
     };
 
     const handleConnect = () => {
-      setMeuId(socket.id ?? null);
+      setMeuId(getPlayerId());
       if (!rejoinSavedRoom()) {
         socket.emit('solicitarDadosSala', codigo);
       }

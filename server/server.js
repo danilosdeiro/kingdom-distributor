@@ -12,6 +12,7 @@ const {
   getObjective,
   getRoleLabel,
   getRoles,
+  normalizePlayerId,
   normalizePlayerName,
   normalizeRole,
   normalizeRoomCode,
@@ -65,7 +66,7 @@ function schedulePlayerRemoval(codigo, sala, jogador) {
     const salaAtual = saloes[codigo];
     if (!salaAtual) return;
 
-    const jogadorAtual = salaAtual.jogadores.find((player) => player.nome === jogador.nome);
+    const jogadorAtual = salaAtual.jogadores.find((player) => player.id === jogador.id);
     if (!jogadorAtual || jogadorAtual.connected) return;
 
     if (salaAtual.hostId === jogadorAtual.id) {
@@ -74,7 +75,7 @@ function schedulePlayerRemoval(codigo, sala, jogador) {
       return;
     }
 
-    salaAtual.jogadores = salaAtual.jogadores.filter((player) => player.nome !== jogadorAtual.nome);
+    salaAtual.jogadores = salaAtual.jogadores.filter((player) => player.id !== jogadorAtual.id);
 
     if (salaAtual.jogadores.length === 0) {
       delete saloes[codigo];
@@ -85,18 +86,18 @@ function schedulePlayerRemoval(codigo, sala, jogador) {
   }, RECONNECT_GRACE_MS);
 }
 
-function updateAssignedRoleSocketId(sala, nome, socketId) {
+function updateAssignedRoleSocketId(sala, playerId, socketId) {
   if (!sala.papeisDesignados) return;
 
-  const papelDoJogador = sala.papeisDesignados.find((papel) => papel.nome === nome);
+  const papelDoJogador = sala.papeisDesignados.find((papel) => papel.id === playerId);
   if (papelDoJogador) {
-    papelDoJogador.id = socketId;
+    papelDoJogador.socketId = socketId;
   }
 }
 
 function findRoomBySocket(socketId) {
   for (const [codigo, sala] of Object.entries(saloes)) {
-    const jogador = sala.jogadores.find((player) => player.id === socketId);
+    const jogador = sala.jogadores.find((player) => player.socketId === socketId);
     if (jogador) return { codigo, sala, jogador };
   }
 
@@ -104,16 +105,17 @@ function findRoomBySocket(socketId) {
 }
 
 io.on('connection', (socket) => {
-  socket.on('criarSala', ({ nome }) => {
+  socket.on('criarSala', ({ nome, playerId }) => {
     const nomeLimpo = normalizePlayerName(nome);
+    const jogadorId = normalizePlayerId(playerId) || socket.id;
     if (!nomeLimpo) {
       return socket.emit('erro', { mensagem: 'Digite seu nome primeiro.' });
     }
 
     const codigoSala = generateRoomCode(roomExists);
     saloes[codigoSala] = {
-      hostId: socket.id,
-      jogadores: [{ id: socket.id, nome: nomeLimpo, connected: true }],
+      hostId: jogadorId,
+      jogadores: [{ id: jogadorId, socketId: socket.id, nome: nomeLimpo, connected: true }],
       modoDeJogo: 'aleatorio',
       disconnectTimers: {},
     };
@@ -122,9 +124,10 @@ io.on('connection', (socket) => {
     socket.emit('salaCriada', { codigo: codigoSala, jogadores: saloes[codigoSala].jogadores });
   });
 
-  socket.on('entrarSala', ({ codigo, nome }) => {
+  socket.on('entrarSala', ({ codigo, nome, playerId }) => {
     const codigoSala = normalizeRoomCode(codigo);
     const nomeLimpo = normalizePlayerName(nome);
+    const jogadorId = normalizePlayerId(playerId) || socket.id;
     const sala = saloes[codigoSala];
 
     if (!sala) {
@@ -135,30 +138,31 @@ io.on('connection', (socket) => {
       return socket.emit('erro', { mensagem: 'Digite seu nome primeiro.' });
     }
 
-    const jogadorIndex = sala.jogadores.findIndex((player) => player.nome === nomeLimpo || player.id === socket.id);
+    const jogadorIndex = sala.jogadores.findIndex((player) => player.id === jogadorId || player.nome === nomeLimpo || player.socketId === socket.id);
 
     if (jogadorIndex > -1) {
       const oldId = sala.jogadores[jogadorIndex].id;
       clearDisconnectTimer(sala, oldId);
       sala.jogadores[jogadorIndex] = {
         ...sala.jogadores[jogadorIndex],
-        id: socket.id,
+        id: jogadorId,
+        socketId: socket.id,
         nome: nomeLimpo,
         connected: true,
       };
 
       if (sala.hostId === oldId) {
-        sala.hostId = socket.id;
+        sala.hostId = jogadorId;
       }
     } else {
       if (sala.jogadores.length >= MAX_PLAYERS) {
         return socket.emit('erro', { mensagem: `A sala '${codigoSala}' esta cheia.` });
       }
 
-      sala.jogadores.push({ id: socket.id, nome: nomeLimpo, connected: true });
+      sala.jogadores.push({ id: jogadorId, socketId: socket.id, nome: nomeLimpo, connected: true });
     }
 
-    updateAssignedRoleSocketId(sala, nomeLimpo, socket.id);
+    updateAssignedRoleSocketId(sala, jogadorId, socket.id);
     socket.join(codigoSala);
     emitLobby(codigoSala, sala);
     socket.emit('entradaComSucesso');
@@ -180,7 +184,8 @@ io.on('connection', (socket) => {
     const codigoSala = normalizeRoomCode(codigo);
     const sala = saloes[codigoSala];
 
-    if (sala && socket.id === sala.hostId) {
+    const jogador = sala?.jogadores.find((player) => player.socketId === socket.id);
+    if (sala && jogador?.id === sala.hostId) {
       sala.modoDeJogo = novoModo;
       emitLobby(codigoSala, sala);
     }
@@ -190,9 +195,11 @@ io.on('connection', (socket) => {
     const codigoSala = normalizeRoomCode(codigo);
     const sala = saloes[codigoSala];
 
-    if (!sala || socket.id !== sala.hostId) return;
+    const host = sala?.jogadores.find((player) => player.socketId === socket.id);
+    if (!sala || host?.id !== sala.hostId) return;
 
-    const jogadorRemovidoSocket = io.sockets.sockets.get(idJogadorARemover);
+    const jogadorRemovido = sala.jogadores.find((player) => player.id === idJogadorARemover);
+    const jogadorRemovidoSocket = jogadorRemovido?.socketId ? io.sockets.sockets.get(jogadorRemovido.socketId) : null;
     if (jogadorRemovidoSocket) {
       jogadorRemovidoSocket.emit('voceFoiRemovido', { mensagem: 'Voce foi removido da sala pelo host.' });
       jogadorRemovidoSocket.leave(codigoSala);
@@ -210,7 +217,8 @@ io.on('connection', (socket) => {
 
     const numeroDeJogadores = sala.jogadores.length;
 
-    if (sala.hostId !== socket.id || !canStartGame(numeroDeJogadores, sala.modoDeJogo, papeisPersonalizados)) {
+    const host = sala.jogadores.find((player) => player.socketId === socket.id);
+    if (host?.id !== sala.hostId || !canStartGame(numeroDeJogadores, sala.modoDeJogo, papeisPersonalizados)) {
       return socket.emit('erro', { mensagem: 'Condicoes para iniciar a partida nao foram atendidas.' });
     }
 
@@ -222,11 +230,12 @@ io.on('connection', (socket) => {
 
     jogadores.forEach((jogador, index) => {
       const papel = normalizeRole(papeisEmbaralhados[index]);
-      io.to(jogador.id).emit('seuPapel', { papel: getRoleLabel(papel), objetivo: getObjective(papel) });
+      io.to(jogador.socketId).emit('seuPapel', { papel: getRoleLabel(papel), objetivo: getObjective(papel) });
     });
 
     sala.papeisDesignados = jogadores.map((jogador, index) => ({
       id: jogador.id,
+      socketId: jogador.socketId,
       nome: jogador.nome,
       papel: normalizeRole(papeisEmbaralhados[index]),
       vivo: true,
@@ -234,12 +243,13 @@ io.on('connection', (socket) => {
     }));
   });
 
-  socket.on('jogadorEliminado', ({ codigo, assassinoId, assassinoNome }) => {
+  socket.on('jogadorEliminado', ({ codigo, vitimaPlayerId, assassinoId, assassinoNome }) => {
     const codigoSala = normalizeRoomCode(codigo);
     const sala = saloes[codigoSala];
     if (!sala || !sala.papeisDesignados) return;
 
-    const vitima = sala.papeisDesignados.find((player) => player.id === socket.id);
+    const vitimaId = normalizePlayerId(vitimaPlayerId);
+    const vitima = sala.papeisDesignados.find((player) => player.id === vitimaId || player.socketId === socket.id);
     const nomeAssassino = normalizePlayerName(assassinoNome);
     const assassino = sala.papeisDesignados.find((player) => (
       player.id === assassinoId || (nomeAssassino && player.nome === nomeAssassino)
@@ -260,8 +270,8 @@ io.on('connection', (socket) => {
 
     if (assassino.papel === 'Coringa') {
       assassino.papel = vitima.papel;
-      io.to(assassino.id).emit('seuPapel', { papel: getRoleLabel(assassino.papel), objetivo: getObjective(assassino.papel) });
-      io.to(assassino.id).emit('mensagemSistema', { mensagem: `Voce roubou o papel de ${vitima.papel}!` });
+      io.to(assassino.socketId).emit('seuPapel', { papel: getRoleLabel(assassino.papel), objetivo: getObjective(assassino.papel) });
+      io.to(assassino.socketId).emit('mensagemSistema', { mensagem: `Voce roubou o papel de ${vitima.papel}!` });
     }
 
     if (assassino.papel === 'Cacador') {
@@ -276,7 +286,7 @@ io.on('connection', (socket) => {
     if (vitima.papel === 'Rei') {
       if (assassino.papel === 'Usurpador') {
         assassino.papel = 'Rei';
-        io.to(assassino.id).emit('seuPapel', { papel: getRoleLabel('Rei'), objetivo: getObjective('Rei') });
+        io.to(assassino.socketId).emit('seuPapel', { papel: getRoleLabel('Rei'), objetivo: getObjective('Rei') });
         io.to(codigoSala).emit('mensagemSistema', { mensagem: 'O Rei caiu! Vida longa ao novo Rei (Usurpador)!' });
       } else {
         return io.to(codigoSala).emit('fimDeJogo', { vencedor: 'Assassinos', mensagem: 'O Rei foi eliminado! Os Assassinos vencem a partida!' });
@@ -296,8 +306,11 @@ io.on('connection', (socket) => {
     const sala = saloes[codigoSala];
 
     if (sala) {
-      clearDisconnectTimer(sala, socket.id);
-      sala.jogadores = sala.jogadores.filter((player) => player.id !== socket.id);
+      const jogador = sala.jogadores.find((player) => player.socketId === socket.id);
+      if (jogador) {
+        clearDisconnectTimer(sala, jogador.id);
+        sala.jogadores = sala.jogadores.filter((player) => player.id !== jogador.id);
+      }
 
       if (sala.jogadores.length === 0) {
         delete saloes[codigoSala];

@@ -3,8 +3,10 @@ const assert = require('node:assert/strict');
 const {
   canStartGame,
   generateRoomCode,
+  getLobbyPayload,
   getRoleLabel,
   getRoles,
+  normalizePlayerId,
   normalizePlayerName,
   normalizeRoomCode,
   shuffle,
@@ -15,6 +17,7 @@ test('normalize room code and player name', () => {
   assert.equal(normalizeRoomCode(' abcd '), 'ABCD');
   assert.equal(normalizePlayerName('  Danilo  '), 'Danilo');
   assert.equal(normalizePlayerName(''), '');
+  assert.equal(normalizePlayerId(' player-1 '), 'player-1');
 });
 
 test('generate room code avoids existing rooms', () => {
@@ -66,4 +69,24 @@ test('elimination validation rejects invalid reports', () => {
 
   room.papeisDesignados[0].vivo = false;
   assert.equal(validateElimination(room, room.papeisDesignados[0], room.papeisDesignados[1]), false);
+});
+
+test('lobby payload exposes stable player ids but hides socket ids', () => {
+  const payload = getLobbyPayload({
+    hostId: 'player-host',
+    modoDeJogo: 'aleatorio',
+    jogadores: [
+      { id: 'player-host', socketId: 'socket-host', nome: 'Host', connected: true },
+      { id: 'player-2', socketId: 'socket-2', nome: 'Guest', connected: false },
+    ],
+  });
+
+  assert.deepEqual(payload, {
+    hostId: 'player-host',
+    modoDeJogo: 'aleatorio',
+    jogadores: [
+      { id: 'player-host', nome: 'Host', connected: true },
+      { id: 'player-2', nome: 'Guest', connected: false },
+    ],
+  });
 });
