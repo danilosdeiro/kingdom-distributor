@@ -57,6 +57,20 @@
 .player-name { word-break: break-all; }
 .player-actions { display: flex; align-items: center; gap: 10px; }
 .host-tag { background-color: #E6D2AA; color: #1c1c1e; font-size: 0.8rem; font-weight: bold; padding: 4px 8px; border-radius: 10px; margin-left: 10px; flex-shrink: 0; }
+.host-crown {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: rgba(230, 210, 170, 0.14);
+  border: 1px solid rgba(230, 210, 170, 0.35);
+  color: #ffd95a;
+  font-size: 1.05rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
 
 .host-options { border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 25px; }
 .host-options h4 { margin: 0 0 15px 0; color: #E6D2AA; text-align: center; font-size: 1.1rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }

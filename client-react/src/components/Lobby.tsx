@@ -190,7 +190,11 @@ const handleCompartilhar = () => {
                 <span className="player-name">{jogador.nome}</span>
                 <div className="player-actions">
                   {jogador.connected === false && <span className="host-tag">Reconectando</span>}
-                  {jogador.id === hostId && <span className="host-tag">👑 Host</span>}
+                  {jogador.id === hostId && (
+                    <span className="host-crown" role="img" aria-label="Host" title="Host">
+                      👑
+                    </span>
+                  )}
                   {euSouOHost && jogador.id !== meuId && (<button className="remove-button" onClick={() => handleRemoverJogador(jogador.id)}>Remover</button>)}
                 </div>
               </li>
