@@ -173,7 +173,17 @@ io.on('connection', (socket) => {
       return socket.emit('erro', { mensagem: 'Digite seu nome primeiro.' });
     }
 
-    const jogadorIndex = sala.jogadores.findIndex((player) => player.id === jogadorId || player.nome === nomeLimpo || player.socketId === socket.id);
+    let jogadorIndex = sala.jogadores.findIndex((player) => player.id === jogadorId || player.socketId === socket.id);
+    const jogadorComMesmoNomeIndex = sala.jogadores.findIndex((player) => player.nome.toLowerCase() === nomeLimpo.toLowerCase());
+
+    if (jogadorIndex === -1 && jogadorComMesmoNomeIndex > -1) {
+      const jogadorComMesmoNome = sala.jogadores[jogadorComMesmoNomeIndex];
+      if (jogadorComMesmoNome.connected) {
+        return socket.emit('erro', { mensagem: 'Esse nome ja esta em uso nessa sala.' });
+      }
+
+      jogadorIndex = jogadorComMesmoNomeIndex;
+    }
 
     if (jogadorIndex > -1) {
       const oldId = sala.jogadores[jogadorIndex].id;
