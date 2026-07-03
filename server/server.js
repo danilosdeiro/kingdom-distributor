@@ -246,6 +246,11 @@ io.on('connection', (socket) => {
       return socket.emit('erro', { mensagem: 'Condicoes para iniciar a partida nao foram atendidas.' });
     }
 
+    const jogadoresDesconectados = sala.jogadores.filter((player) => !player.connected);
+    if (jogadoresDesconectados.length > 0) {
+      return socket.emit('erro', { mensagem: 'Aguarde todos reconectarem antes de distribuir os papeis.' });
+    }
+
     sala.historicoMortes = [];
     sala.status = 'em_jogo';
     sala.resultado = null;

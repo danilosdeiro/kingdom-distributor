@@ -23,6 +23,11 @@ export function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const nomeSalvo = localStorage.getItem('meuNome');
+    if (nomeSalvo) {
+      setNome(nomeSalvo);
+    }
+
     setTemSalaSalva(Boolean(localStorage.getItem('salaAtual') && localStorage.getItem('meuNome')));
     setTemPapelSalvo(Boolean(sessionStorage.getItem('ultimoPapel')));
   }, []);

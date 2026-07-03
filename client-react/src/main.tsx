@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { App as CapacitorApp } from '@capacitor/app';
 import App from './App.tsx'
 import './index.css'
 
@@ -34,6 +35,32 @@ const router = createBrowserRouter([
     ],
   },
 ]);
+
+const APP_LINK_HOST = 'meukingdom.vercel.app';
+
+function handleIncomingAppUrl(urlString: string) {
+  try {
+    const url = new URL(urlString);
+    if (url.hostname !== APP_LINK_HOST) return;
+
+    const route = `${url.pathname}${url.search}${url.hash}`;
+    if (route && route !== '/') {
+      void router.navigate(route);
+    }
+  } catch (error) {
+    console.warn('Invalid app link:', error);
+  }
+}
+
+void CapacitorApp.getLaunchUrl().then((launchUrl) => {
+  if (launchUrl?.url) {
+    handleIncomingAppUrl(launchUrl.url);
+  }
+});
+
+void CapacitorApp.addListener('appUrlOpen', ({ url }) => {
+  handleIncomingAppUrl(url);
+});
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

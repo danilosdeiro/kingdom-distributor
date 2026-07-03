@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.meukingdom.app",
+      "sha256_cert_fingerprints": [
+        "91:D4:93:1B:1F:A8:C7:CA:B8:21:8F:AF:DB:1A:7C:B7:62:F4:04:4B:A1:95:B8:2F:CD:B1:97:4E:43:4D:C5:33"
+      ]
+    }
+  }
+]

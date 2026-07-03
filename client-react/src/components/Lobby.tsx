@@ -27,6 +27,8 @@ interface Jogador { id: string; nome: string; connected?: boolean; }
 type ModoDeJogo = 'aleatorio' | 'convencional' | 'personalizado';
 type PapelSorteavel = 'Usurpador' | 'Caçador' | 'Coringa';
 
+const PUBLIC_APP_URL = 'https://meukingdom.vercel.app';
+
 export function Lobby() {
 const handleCompartilhar = () => {
   // Se 'codigo' for undefined, vira '' (string vazia)
@@ -36,7 +38,7 @@ const handleCompartilhar = () => {
     toast.error("Código da sala não encontrado!");
     return;
   }
-  const urlConvite = `${window.location.origin}/${codigoLimpo}`;
+  const urlConvite = `${PUBLIC_APP_URL}/${codigoLimpo}`;
   
   // No campo 'text', NÃO colocamos o link, pois o campo 'url' já vai adicioná-lo
   const mensagem = `⚔️ *Meu Kingdom* ⚔️\nEntre na sala para receber seu papel`;
@@ -155,6 +157,7 @@ const handleCompartilhar = () => {
   const euSouOHost = meuId !== null && meuId === hostId;
   const numJogadores = jogadores.length;
   const numPapeisExtrasNecessarios = numJogadores > 4 ? numJogadores - 4 : 0;
+  const haJogadorReconectando = jogadores.some((jogador) => jogador.connected === false);
 
   let isButtonDisabled = true;
   if ([5, 6, 7].includes(numJogadores)) {
@@ -165,6 +168,10 @@ const handleCompartilhar = () => {
     } else {
       isButtonDisabled = false;
     }
+  }
+
+  if (haJogadorReconectando) {
+    isButtonDisabled = true;
   }
 
   const papeisSorteaveis: PapelSorteavel[] = ['Usurpador', 'Caçador', 'Coringa'];
@@ -252,7 +259,11 @@ const handleCompartilhar = () => {
             onClick={handleDistribuirPapeis} 
             disabled={isButtonDisabled}
           >
-            {isButtonDisabled && ![5,6,7].includes(numJogadores) ? `Aguardando jogadores` : `Distribuir Papéis para ${numJogadores} Jogadores`}
+            {haJogadorReconectando
+              ? 'Aguardando reconexão'
+              : isButtonDisabled && ![5,6,7].includes(numJogadores)
+                ? 'Aguardando jogadores'
+                : `Distribuir Papéis para ${numJogadores} Jogadores`}
           </button>
         )}
         {!euSouOHost && ( <div className="waiting-message"><p>Aguardando o Host iniciar o jogo...</p></div> )}
