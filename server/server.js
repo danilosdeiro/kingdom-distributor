@@ -294,16 +294,10 @@ io.on('connection', (socket) => {
     sala.status = 'em_jogo';
     sala.resultado = null;
 
-    const jogadores = sala.jogadores;
     const papeis = getRoles(numeroDeJogadores, sala.modoDeJogo, papeisPersonalizados);
     const papeisEmbaralhados = shuffle(papeis);
 
-    jogadores.forEach((jogador, index) => {
-      const papel = normalizeRole(papeisEmbaralhados[index]);
-      io.to(jogador.socketId).emit('seuPapel', { papel: getRoleLabel(papel), objetivo: getObjective(papel) });
-    });
-
-    sala.papeisDesignados = jogadores.map((jogador, index) => ({
+    sala.papeisDesignados = sala.jogadores.map((jogador, index) => ({
       id: jogador.id,
       socketId: jogador.socketId,
       nome: jogador.nome,
@@ -311,6 +305,15 @@ io.on('connection', (socket) => {
       vivo: true,
       abates: 0,
     }));
+
+    emitLobby(codigoSala, sala);
+
+    sala.papeisDesignados.forEach((jogador) => {
+      io.to(jogador.socketId).emit('seuPapel', {
+        papel: getRoleLabel(jogador.papel),
+        objetivo: getObjective(jogador.papel),
+      });
+    });
   });
 
   socket.on('jogadorEliminado', ({ codigo, vitimaPlayerId, assassinoId, assassinoNome }) => {
