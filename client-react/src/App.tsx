@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import { ConnectionStatus } from './components/ConnectionStatus';
 import { Footer } from './components/Footer';
 import { SideMenu } from './components/SideMenu';
 import { Toaster } from 'react-hot-toast';
@@ -32,6 +33,8 @@ function App() {
         },
       }}
     />
+
+      <ConnectionStatus />
 
       {/* Botão de Menu ATUALIZADO */}
       <button 

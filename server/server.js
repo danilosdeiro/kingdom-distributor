@@ -51,6 +51,13 @@ function emitLobby(codigo, sala) {
   io.to(codigo).emit('atualizarLobby', getLobbyPayload(sala));
 }
 
+function ensureRoomHasHost(sala) {
+  if (!sala.jogadores.length) return;
+  if (sala.jogadores.some((player) => player.id === sala.hostId)) return;
+
+  sala.hostId = sala.jogadores[0].id;
+}
+
 function clearDisconnectTimer(sala, playerId) {
   if (!sala.disconnectTimers?.[playerId]) return;
 
@@ -262,6 +269,7 @@ io.on('connection', (socket) => {
 
     clearDisconnectTimer(sala, idJogadorARemover);
     sala.jogadores = sala.jogadores.filter((player) => player.id !== idJogadorARemover);
+    ensureRoomHasHost(sala);
     emitLobby(codigoSala, sala);
   });
 
@@ -382,6 +390,7 @@ io.on('connection', (socket) => {
       if (sala.jogadores.length === 0) {
         delete saloes[codigoSala];
       } else {
+        ensureRoomHasHost(sala);
         emitLobby(codigoSala, sala);
       }
     }
