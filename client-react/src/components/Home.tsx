@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useParams } from 'react-router-dom';
 import { socket } from '../services/socket';
+import { gameState } from '../services/gameState';
 import { getPlayerId } from '../services/playerIdentity';
 import { clearRoomSession } from '../services/roomSession';
 import { toast } from 'react-hot-toast';
@@ -11,6 +12,11 @@ import logoMeuKingdom from '../assets/meuking.png';
 interface Jogador {
   id: string;
   nome: string;
+}
+
+interface PapelInfo {
+  papel: string;
+  objetivo: string;
 }
 
 export function Home() {
@@ -56,6 +62,12 @@ export function Home() {
       }
     };
 
+    const handleSeuPapel = (papelInfo: PapelInfo) => {
+      gameState.setMeuPapel(papelInfo);
+      sessionStorage.setItem('ultimoPapel', JSON.stringify(papelInfo));
+      navigate('/role', { replace: true });
+    };
+
     const handleErro = ({ mensagem }: { mensagem: string }) => {
       toast.error(mensagem);
       if (mensagem.toLowerCase().includes('sala nao encontrada')) {
@@ -67,11 +79,13 @@ export function Home() {
 
     socket.on('salaCriada', handleSalaCriada);
     socket.on('entradaComSucesso', handleEntradaComSucesso);
+    socket.on('seuPapel', handleSeuPapel);
     socket.on('erro', handleErro);
 
     return () => {
       socket.off('salaCriada', handleSalaCriada);
       socket.off('entradaComSucesso', handleEntradaComSucesso);
+      socket.off('seuPapel', handleSeuPapel);
       socket.off('erro', handleErro);
     };
   }, [navigate]);

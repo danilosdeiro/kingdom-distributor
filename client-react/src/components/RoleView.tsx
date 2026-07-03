@@ -55,7 +55,9 @@ export function RoleView() {
     const jogadoresSalvos = localStorage.getItem('jogadoresDaSala');
     if (jogadoresSalvos) {
       try {
-        setJogadoresVivos(JSON.parse(jogadoresSalvos));
+        const jogadores = JSON.parse(jogadoresSalvos) as Jogador[];
+        setJogadoresVivos(jogadores);
+        setEstouMorto(jogadores.some((jogador) => jogador.id === getPlayerId() && jogador.vivo === false));
       } catch {
         setJogadoresVivos([]);
       }
@@ -103,6 +105,9 @@ export function RoleView() {
     const handleAtualizarLobby = (dados: { jogadores: Jogador[]; status?: string; resultado?: GameResult | null }) => {
       setJogadoresVivos(dados.jogadores);
       localStorage.setItem('jogadoresDaSala', JSON.stringify(dados.jogadores));
+      if (dados.jogadores.some((jogador) => jogador.id === getPlayerId() && jogador.vivo === false)) {
+        setEstouMorto(true);
+      }
       if (dados.status === 'finalizado' && dados.resultado) {
         setResultado(dados.resultado);
       }

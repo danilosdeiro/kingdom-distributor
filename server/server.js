@@ -87,12 +87,23 @@ function schedulePlayerRemoval(codigo, sala, jogador) {
 }
 
 function updateAssignedRoleSocketId(sala, playerId, socketId) {
-  if (!sala.papeisDesignados) return;
+  if (!sala.papeisDesignados) return null;
 
   const papelDoJogador = sala.papeisDesignados.find((papel) => papel.id === playerId);
   if (papelDoJogador) {
     papelDoJogador.socketId = socketId;
   }
+
+  return papelDoJogador || null;
+}
+
+function emitAssignedRole(socket, assignedRole) {
+  if (!assignedRole) return;
+
+  socket.emit('seuPapel', {
+    papel: getRoleLabel(assignedRole.papel),
+    objetivo: getObjective(assignedRole.papel),
+  });
 }
 
 function findRoomBySocket(socketId) {
@@ -186,10 +197,14 @@ io.on('connection', (socket) => {
       sala.jogadores.push({ id: jogadorId, socketId: socket.id, nome: nomeLimpo, connected: true });
     }
 
-    updateAssignedRoleSocketId(sala, jogadorId, socket.id);
+    const assignedRole = updateAssignedRoleSocketId(sala, jogadorId, socket.id);
     socket.join(codigoSala);
     emitLobby(codigoSala, sala);
     socket.emit('entradaComSucesso');
+
+    if (sala.status === 'em_jogo') {
+      emitAssignedRole(socket, assignedRole);
+    }
   });
 
   socket.on('solicitarDadosSala', (codigo) => {
@@ -202,6 +217,12 @@ io.on('connection', (socket) => {
 
     socket.join(codigoSala);
     socket.emit('atualizarLobby', getLobbyPayload(sala));
+
+    const jogador = sala.jogadores.find((player) => player.socketId === socket.id);
+    const assignedRole = sala.papeisDesignados?.find((papel) => papel.id === jogador?.id);
+    if (sala.status === 'em_jogo') {
+      emitAssignedRole(socket, assignedRole);
+    }
   });
 
   socket.on('mudarModoDeJogo', ({ codigo, novoModo }) => {
