@@ -2,6 +2,8 @@
 
 const express = require('express');
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const {
@@ -29,6 +31,8 @@ const CLIENT_ORIGINS = (process.env.CLIENT_ORIGINS || 'http://localhost:5173,htt
 
 const PORT = process.env.PORT || 3000;
 const RECONNECT_GRACE_MS = Number(process.env.RECONNECT_GRACE_MS || 120000);
+const ROOM_STATE_FILE = process.env.ROOM_STATE_FILE || path.join(__dirname, 'data', 'rooms.json');
+const ROOM_STATE_TTL_MS = Number(process.env.ROOM_STATE_TTL_MS || 12 * 60 * 60 * 1000);
 
 app.use(cors({ origin: CLIENT_ORIGINS }));
 app.get('/health', (_req, res) => res.json({ ok: true }));
@@ -41,7 +45,77 @@ const io = new Server(server, {
   },
 });
 
-const saloes = {};
+const saloes = loadRooms();
+
+function serializeRoom(sala) {
+  return {
+    ...sala,
+    disconnectTimers: {},
+  };
+}
+
+function restoreRoom(sala) {
+  return {
+    ...sala,
+    jogadores: (sala.jogadores || []).map((player) => ({
+      ...player,
+      socketId: null,
+      connected: false,
+    })),
+    papeisDesignados: sala.papeisDesignados?.map((player) => ({
+      ...player,
+      socketId: null,
+    })),
+    disconnectTimers: {},
+  };
+}
+
+function loadRooms() {
+  try {
+    if (!fs.existsSync(ROOM_STATE_FILE)) return {};
+
+    const rawState = fs.readFileSync(ROOM_STATE_FILE, 'utf8');
+    const parsedState = JSON.parse(rawState);
+    const now = Date.now();
+
+    return Object.fromEntries(
+      Object.entries(parsedState)
+        .filter(([, sala]) => now - (sala.updatedAt || 0) <= ROOM_STATE_TTL_MS)
+        .map(([codigo, sala]) => [codigo, restoreRoom(sala)])
+    );
+  } catch (error) {
+    console.error('Nao foi possivel carregar salas salvas:', error);
+    return {};
+  }
+}
+
+function saveRooms() {
+  try {
+    fs.mkdirSync(path.dirname(ROOM_STATE_FILE), { recursive: true });
+    const serializableRooms = Object.fromEntries(
+      Object.entries(saloes).map(([codigo, sala]) => [codigo, serializeRoom(sala)])
+    );
+    const tempFile = `${ROOM_STATE_FILE}.tmp`;
+    fs.writeFileSync(tempFile, JSON.stringify(serializableRooms, null, 2));
+    fs.renameSync(tempFile, ROOM_STATE_FILE);
+  } catch (error) {
+    console.error('Nao foi possivel salvar salas:', error);
+  }
+}
+
+function touchRoom(sala) {
+  sala.updatedAt = Date.now();
+}
+
+function persistRoom(sala) {
+  touchRoom(sala);
+  saveRooms();
+}
+
+function removeRoom(codigo) {
+  delete saloes[codigo];
+  saveRooms();
+}
 
 function roomExists(codigo) {
   return Boolean(saloes[codigo]);
@@ -78,17 +152,18 @@ function schedulePlayerRemoval(codigo, sala, jogador) {
 
     if (salaAtual.hostId === jogadorAtual.id) {
       io.to(codigo).emit('salaFechada', { mensagem: 'O host desconectou e a sala foi encerrada.' });
-      delete saloes[codigo];
+      removeRoom(codigo);
       return;
     }
 
     salaAtual.jogadores = salaAtual.jogadores.filter((player) => player.id !== jogadorAtual.id);
 
     if (salaAtual.jogadores.length === 0) {
-      delete saloes[codigo];
+      removeRoom(codigo);
       return;
     }
 
+    persistRoom(salaAtual);
     emitLobby(codigo, salaAtual);
   }, RECONNECT_GRACE_MS);
 }
@@ -140,6 +215,7 @@ function finishGame(codigo, sala, vencedor, mensagem) {
 
   sala.status = 'finalizado';
   sala.resultado = resultado;
+  persistRoom(sala);
   io.to(codigo).emit('fimDeJogo', resultado);
   return resultado;
 }
@@ -160,9 +236,12 @@ io.on('connection', (socket) => {
       status: 'lobby',
       resultado: null,
       disconnectTimers: {},
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     };
 
     socket.join(codigoSala);
+    saveRooms();
     socket.emit('salaCriada', { codigo: codigoSala, jogadores: saloes[codigoSala].jogadores });
   });
 
@@ -192,6 +271,10 @@ io.on('connection', (socket) => {
       jogadorIndex = jogadorComMesmoNomeIndex;
     }
 
+    if (jogadorIndex === -1 && sala.status !== 'lobby') {
+      return socket.emit('erro', { mensagem: 'A partida ja comecou. Apenas jogadores da sala podem reconectar.' });
+    }
+
     if (jogadorIndex > -1) {
       const oldId = sala.jogadores[jogadorIndex].id;
       clearDisconnectTimer(sala, oldId);
@@ -216,6 +299,7 @@ io.on('connection', (socket) => {
 
     const assignedRole = updateAssignedRoleSocketId(sala, jogadorId, socket.id);
     socket.join(codigoSala);
+    persistRoom(sala);
     emitLobby(codigoSala, sala);
     socket.emit('entradaComSucesso');
 
@@ -249,6 +333,7 @@ io.on('connection', (socket) => {
     const jogador = sala?.jogadores.find((player) => player.socketId === socket.id);
     if (sala && jogador?.id === sala.hostId) {
       sala.modoDeJogo = novoModo;
+      persistRoom(sala);
       emitLobby(codigoSala, sala);
     }
   });
@@ -270,6 +355,7 @@ io.on('connection', (socket) => {
     clearDisconnectTimer(sala, idJogadorARemover);
     sala.jogadores = sala.jogadores.filter((player) => player.id !== idJogadorARemover);
     ensureRoomHasHost(sala);
+    persistRoom(sala);
     emitLobby(codigoSala, sala);
   });
 
@@ -306,6 +392,7 @@ io.on('connection', (socket) => {
       abates: 0,
     }));
 
+    persistRoom(sala);
     emitLobby(codigoSala, sala);
 
     sala.papeisDesignados.forEach((jogador) => {
@@ -340,6 +427,7 @@ io.on('connection', (socket) => {
     assassino.abates += 1;
     sala.historicoMortes = sala.historicoMortes || [];
     sala.historicoMortes.push({ vitima: vitima.nome, assassino: assassino.nome });
+    persistRoom(sala);
 
     if (vitima.papel === 'Coringa' && sala.historicoMortes.length === 1) {
       return finishGame(codigoSala, sala, 'Coringa', 'O Coringa foi o primeiro a ser eliminado e venceu o jogo!');
@@ -347,6 +435,7 @@ io.on('connection', (socket) => {
 
     if (assassino.papel === 'Coringa') {
       assassino.papel = vitima.papel;
+      persistRoom(sala);
       io.to(assassino.socketId).emit('seuPapel', { papel: getRoleLabel(assassino.papel), objetivo: getObjective(assassino.papel) });
       io.to(assassino.socketId).emit('mensagemSistema', { mensagem: `Voce roubou o papel de ${vitima.papel}!` });
     }
@@ -363,6 +452,7 @@ io.on('connection', (socket) => {
     if (vitima.papel === 'Rei') {
       if (assassino.papel === 'Usurpador') {
         assassino.papel = 'Rei';
+        persistRoom(sala);
         io.to(assassino.socketId).emit('seuPapel', { papel: getRoleLabel('Rei'), objetivo: getObjective('Rei') });
         io.to(codigoSala).emit('mensagemSistema', { mensagem: 'O Rei caiu! Vida longa ao novo Rei (Usurpador)!' });
       } else {
@@ -391,9 +481,10 @@ io.on('connection', (socket) => {
       }
 
       if (sala.jogadores.length === 0) {
-        delete saloes[codigoSala];
+        removeRoom(codigoSala);
       } else {
         ensureRoomHasHost(sala);
+        persistRoom(sala);
         emitLobby(codigoSala, sala);
       }
     }
@@ -408,6 +499,7 @@ io.on('connection', (socket) => {
     const { codigo, sala, jogador } = found;
     jogador.connected = false;
     schedulePlayerRemoval(codigo, sala, jogador);
+    persistRoom(sala);
     emitLobby(codigo, sala);
   });
 });
