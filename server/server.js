@@ -127,9 +127,9 @@ function emitLobby(codigo, sala) {
 
 function ensureRoomHasHost(sala) {
   if (!sala.jogadores.length) return;
-  if (sala.jogadores.some((player) => player.id === sala.hostId)) return;
+  if (sala.jogadores.some((player) => player.id === sala.hostId && player.connected !== false)) return;
 
-  sala.hostId = sala.jogadores[0].id;
+  sala.hostId = sala.jogadores.find((player) => player.connected !== false)?.id || sala.jogadores[0].id;
 }
 
 function clearDisconnectTimer(sala, playerId) {
@@ -150,10 +150,21 @@ function schedulePlayerRemoval(codigo, sala, jogador) {
     const jogadorAtual = salaAtual.jogadores.find((player) => player.id === jogador.id);
     if (!jogadorAtual || jogadorAtual.connected) return;
 
-    if (salaAtual.hostId === jogadorAtual.id) {
-      io.to(codigo).emit('salaFechada', { mensagem: 'O host desconectou e a sala foi encerrada.' });
-      removeRoom(codigo);
+    if (salaAtual.status === 'em_jogo' || salaAtual.status === 'finalizado') {
+      ensureRoomHasHost(salaAtual);
+      persistRoom(salaAtual);
+      emitLobby(codigo, salaAtual);
       return;
+    }
+
+    if (salaAtual.hostId === jogadorAtual.id) {
+      ensureRoomHasHost(salaAtual);
+
+      if (salaAtual.hostId === jogadorAtual.id) {
+        io.to(codigo).emit('salaFechada', { mensagem: 'O host desconectou e a sala foi encerrada.' });
+        removeRoom(codigo);
+        return;
+      }
     }
 
     salaAtual.jogadores = salaAtual.jogadores.filter((player) => player.id !== jogadorAtual.id);
