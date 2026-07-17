@@ -174,11 +174,9 @@ const handleCompartilhar = () => {
   const numJogadores = jogadores.length;
   const numPapeisExtrasNecessarios = numJogadores > 4 ? numJogadores - 4 : 0;
   const haJogadorReconectando = jogadores.some((jogador) => jogador.connected === false);
-  const todosEscolheramCor = jogadores.every((jogador) => Boolean(jogador.cor));
-
   let isButtonDisabled = true;
   if (modoDeJogo === 'magic-war') {
-    isButtonDisabled = numJogadores < 3 || numJogadores > 7 || !todosEscolheramCor;
+    isButtonDisabled = numJogadores < 3 || numJogadores > 7;
   } else if ([5, 6, 7].includes(numJogadores)) {
     if (modoDeJogo === 'personalizado') {
       isButtonDisabled = papeisPersonalizados.length !== numPapeisExtrasNecessarios;
@@ -300,8 +298,6 @@ const handleCompartilhar = () => {
           >
             {haJogadorReconectando
               ? 'Aguardando reconexão'
-              : modoDeJogo === 'magic-war' && numJogadores >= 3 && !todosEscolheramCor
-                ? 'Aguardando escolha das cores'
               : isButtonDisabled && (modoDeJogo === 'magic-war' ? numJogadores < 3 : ![5,6,7].includes(numJogadores))
                 ? 'Aguardando jogadores'
                 : modoDeJogo === 'magic-war'

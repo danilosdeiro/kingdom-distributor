@@ -12,4 +12,7 @@ export const gameState = {
   getMeuPapel: (): PapelInfo | null => {
     return papelAtual;
   },
+  clearMeuPapel: () => {
+    papelAtual = null;
+  },
 };

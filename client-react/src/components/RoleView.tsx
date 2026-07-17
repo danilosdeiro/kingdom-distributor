@@ -16,6 +16,7 @@ interface Jogador {
   cor?: CorMagicWar | null;
   vida?: number;
   danoComandante?: Record<string, number>;
+  commanderCount?: 1 | 2;
 }
 
 interface CorMagicWar {
@@ -68,6 +69,7 @@ export function RoleView() {
   const [meuId, setMeuId] = useState('');
   const [resultado, setResultado] = useState<GameResult | null>(null);
   const [modalDanoComandanteAberto, setModalDanoComandanteAberto] = useState(false);
+  const [jogadorDetalhesId, setJogadorDetalhesId] = useState<string | null>(null);
   const [hostId, setHostId] = useState<string | null>(null);
   const [modalRegistroHostAberto, setModalRegistroHostAberto] = useState(false);
   const [vitimaSelecionadaId, setVitimaSelecionadaId] = useState('');
@@ -120,6 +122,15 @@ export function RoleView() {
       toast.success(data.mensagem, { duration: 8000 });
     };
 
+    const handleLobbyReaberto = () => {
+      gameState.clearMeuPapel();
+      papelStorage.clear();
+      setResultado(null);
+      setEstouMorto(false);
+      const codigoSala = localStorage.getItem('salaAtual');
+      navigate(codigoSala ? `/lobby/${codigoSala}` : '/', { replace: true });
+    };
+
     const handleSeuPapel = (novoPapelInfo: PapelInfo) => {
       setMeuPapel(novoPapelInfo);
       gameState.setMeuPapel(novoPapelInfo);
@@ -150,6 +161,7 @@ export function RoleView() {
     socket.on('morteConfirmada', handleMorteConfirmada);
     socket.on('mensagemSistema', handleMensagemSistema);
     socket.on('fimDeJogo', handleFimDeJogo);
+    socket.on('lobbyReaberto', handleLobbyReaberto);
     socket.on('seuPapel', handleSeuPapel);
     socket.on('atualizarLobby', handleAtualizarLobby);
     socket.on('erro', handleErro);
@@ -161,6 +173,7 @@ export function RoleView() {
       socket.off('morteConfirmada', handleMorteConfirmada);
       socket.off('mensagemSistema', handleMensagemSistema);
       socket.off('fimDeJogo', handleFimDeJogo);
+      socket.off('lobbyReaberto', handleLobbyReaberto);
       socket.off('seuPapel', handleSeuPapel);
       socket.off('atualizarLobby', handleAtualizarLobby);
       socket.off('erro', handleErro);
@@ -208,7 +221,11 @@ export function RoleView() {
   const voltarAoLobby = () => {
     const codigoSala = localStorage.getItem('salaAtual');
     if (codigoSala) {
-      navigate(`/lobby/${codigoSala}`, { state: { voltouDaPartida: true } });
+      if (resultado) {
+        socket.emit('voltarAoLobby', { codigo: codigoSala });
+      } else {
+        navigate(`/lobby/${codigoSala}`, { state: { voltouDaPartida: true } });
+      }
     } else {
       navigate('/');
     }
@@ -233,6 +250,18 @@ export function RoleView() {
     const codigoSala = localStorage.getItem('salaAtual');
     if (codigoSala) socket.emit('alterarDanoComandante', { codigo: codigoSala, comandanteId, delta });
   };
+
+  const adicionarSegundoComandante = () => {
+    const codigoSala = localStorage.getItem('salaAtual');
+    if (codigoSala) socket.emit('adicionarSegundoComandante', { codigo: codigoSala });
+  };
+
+  const getCommanderSources = () => jogadoresVivos.flatMap((jogador) => [
+    { id: jogador.id, nome: jogador.nome, cor: jogador.cor },
+    ...(jogador.commanderCount === 2
+      ? [{ id: `${jogador.id}:partner`, nome: `${jogador.nome} (Parceiro)`, cor: jogador.cor }]
+      : []),
+  ]);
 
   const renderContadorVida = () => {
     if (estouMorto) return null;
@@ -291,12 +320,19 @@ export function RoleView() {
                 aria-label={`${jogador.nome} ${eliminado ? 'eliminado' : 'em jogo'}`}
               >
                 <div className="player-status-identity">
-                  <span
-                    className="player-status-name"
-                    style={jogador.cor && !eliminado ? { color: jogador.cor.id === 'black' ? '#aaa5b3' : jogador.cor.hex } : undefined}
+                  <button
+                    type="button"
+                    className="player-status-name-button"
+                    onClick={() => setJogadorDetalhesId(jogador.id)}
+                    aria-label={`Ver dano de comandante recebido por ${jogador.nome}`}
                   >
-                    {jogador.nome}
-                  </span>
+                    <span
+                      className="player-status-name"
+                      style={jogador.cor && !eliminado ? { color: jogador.cor.id === 'black' ? '#aaa5b3' : jogador.cor.hex } : undefined}
+                    >
+                      {jogador.nome}
+                    </span>
+                  </button>
                 </div>
                 <div className="player-status-stats">
                   <span className={`player-life-value ${(jogador.vida ?? 40) <= 0 ? 'is-zero' : ''}`}>{jogador.vida ?? 40} PV</span>
@@ -307,6 +343,39 @@ export function RoleView() {
           })}
         </div>
       </section>
+    );
+  };
+
+  const renderDetalhesDanoComandante = () => {
+    const jogadorDetalhes = jogadoresVivos.find((jogador) => jogador.id === jogadorDetalhesId);
+    if (!jogadorDetalhes) return null;
+
+    return (
+      <div className="commander-modal-backdrop" role="presentation" onClick={() => setJogadorDetalhesId(null)}>
+        <div className="commander-modal" role="dialog" aria-modal="true" aria-labelledby="player-damage-title" onClick={(event) => event.stopPropagation()}>
+          <div className="commander-modal-header">
+            <div>
+              <h2 id="player-damage-title">{jogadorDetalhes.nome}</h2>
+              <p>Dano de comandante recebido</p>
+            </div>
+            <button type="button" className="commander-modal-close" onClick={() => setJogadorDetalhesId(null)} aria-label="Fechar">×</button>
+          </div>
+          <div className="commander-damage-list">
+            {getCommanderSources().map((comandante) => {
+              const dano = jogadorDetalhes.danoComandante?.[comandante.id] ?? 0;
+              return (
+                <div className={`commander-damage-row commander-damage-readonly ${dano >= 21 ? 'is-lethal' : ''}`} key={comandante.id}>
+                  <div className="commander-player">
+                    {comandante.cor && <span className="player-status-color-swatch" style={{ backgroundColor: comandante.cor.hex }} aria-hidden="true" />}
+                    <span>{comandante.nome}</span>
+                  </div>
+                  <strong className="commander-damage-total">{dano}</strong>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -359,6 +428,7 @@ export function RoleView() {
           <h1 style={{ color: '#d32f2f' }}>ELIMINADO</h1>
           <p>Você está morto. Aguarde o fim da partida em silêncio.</p>
           {renderListaJogadores()}
+          {renderDetalhesDanoComandante()}
           <div className="role-actions">
             <button className="back-button" onClick={voltarAoLobby}>
               Voltar ao Lobby
@@ -384,7 +454,9 @@ export function RoleView() {
 
         {renderContadorVida()}
 
-        <p>{meuPapel.modoDeJogo === 'magic-war' ? 'Sua cor é:' : 'Seu Papel Secreto é:'}</p>
+        {renderListaJogadores()}
+
+        <p className="private-role-label">{meuPapel.modoDeJogo === 'magic-war' ? 'Sua cor é:' : 'Seu Papel Secreto é:'}</p>
 
         {meuPapel.modoDeJogo === 'magic-war' && meuPapel.cor && (
           <div className="my-color-banner" style={{ backgroundColor: meuPapel.cor.hex, color: meuPapel.cor.textColor || '#fff' }}>
@@ -433,8 +505,6 @@ export function RoleView() {
         </button>
 
         <p className="warning">{meuPapel.modoDeJogo === 'magic-war' ? 'Não revele seu objetivo a ninguém!' : 'Não revele seu papel a ninguém!'}</p>
-
-        {renderListaJogadores()}
 
         {meuId === hostId && (
           <button
@@ -503,30 +573,36 @@ export function RoleView() {
                 <button type="button" className="commander-modal-close" onClick={() => setModalDanoComandanteAberto(false)} aria-label="Fechar">×</button>
               </div>
               <div className="commander-damage-list">
-                {jogadoresVivos
-                  .filter((jogador) => jogador.id !== meuId)
-                  .map((jogador) => {
+                {getCommanderSources()
+                  .map((comandante) => {
                     const jogadorAtual = jogadoresVivos.find((item) => item.id === meuId);
-                    const dano = jogadorAtual?.danoComandante?.[jogador.id] ?? 0;
+                    const dano = jogadorAtual?.danoComandante?.[comandante.id] ?? 0;
 
                     return (
-                      <div className={`commander-damage-row ${dano >= 21 ? 'is-lethal' : ''}`} key={jogador.id}>
+                      <div className={`commander-damage-row ${dano >= 21 ? 'is-lethal' : ''}`} key={comandante.id}>
                         <div className="commander-player">
-                          {jogador.cor && <span className="player-status-color-swatch" style={{ backgroundColor: jogador.cor.hex }} aria-hidden="true" />}
-                          <span>{jogador.nome}</span>
+                          {comandante.cor && <span className="player-status-color-swatch" style={{ backgroundColor: comandante.cor.hex }} aria-hidden="true" />}
+                          <span>{comandante.nome}</span>
                         </div>
                         <div className="commander-stepper">
-                          <button type="button" onClick={() => alterarDanoComandante(jogador.id, -1)} aria-label={`Diminuir dano de comandante de ${jogador.nome}`}>−</button>
+                          <button type="button" onClick={() => alterarDanoComandante(comandante.id, -1)} aria-label={`Diminuir dano de comandante de ${comandante.nome}`}>−</button>
                           <strong>{dano}</strong>
-                          <button type="button" onClick={() => alterarDanoComandante(jogador.id, 1)} aria-label={`Aumentar dano de comandante de ${jogador.nome}`}>+</button>
+                          <button type="button" onClick={() => alterarDanoComandante(comandante.id, 1)} aria-label={`Aumentar dano de comandante de ${comandante.nome}`}>+</button>
                         </div>
                       </div>
                     );
                   })}
               </div>
+              {jogadoresVivos.find((jogador) => jogador.id === meuId)?.commanderCount !== 2 && (
+                <button type="button" className="add-partner-button" onClick={adicionarSegundoComandante}>
+                  Adicionar segundo comandante (Partner)
+                </button>
+              )}
             </div>
           </div>
         )}
+
+        {renderDetalhesDanoComandante()}
 
         {modalRegistroHostAberto && (
           <div className="commander-modal-backdrop" role="presentation" onClick={() => setModalRegistroHostAberto(false)}>
