@@ -291,13 +291,12 @@ export function RoleView() {
                 aria-label={`${jogador.nome} ${eliminado ? 'eliminado' : 'em jogo'}`}
               >
                 <div className="player-status-identity">
-                  <span className="player-status-name">{jogador.nome}</span>
-                  {jogador.cor && (
-                    <span className="player-status-color">
-                      <span className="player-status-color-swatch" style={{ backgroundColor: jogador.cor.hex }} aria-hidden="true" />
-                      {jogador.cor.nome}
-                    </span>
-                  )}
+                  <span
+                    className="player-status-name"
+                    style={jogador.cor && !eliminado ? { color: jogador.cor.id === 'black' ? '#aaa5b3' : jogador.cor.hex } : undefined}
+                  >
+                    {jogador.nome}
+                  </span>
                 </div>
                 <div className="player-status-stats">
                   <span className={`player-life-value ${(jogador.vida ?? 40) <= 0 ? 'is-zero' : ''}`}>{jogador.vida ?? 40} PV</span>

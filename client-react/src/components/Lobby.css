@@ -60,37 +60,42 @@
   gap: 10px;
   min-width: 0;
 }
-.player-name { word-break: break-all; }
-.player-color-label {
+.player-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.player-color-button {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 5px;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 50%;
   background: transparent;
-  color: #cfd2d5;
-  font-family: inherit;
-  font-size: 0.78rem;
-  font-weight: 700;
-  white-space: nowrap;
+  flex: 0 0 32px;
 }
-.player-color-label.is-selectable {
-  border-color: rgba(230, 210, 170, 0.45);
+.player-color-button.is-selectable {
   cursor: pointer;
 }
-.player-color-label.is-selectable:active {
-  background: rgba(230, 210, 170, 0.16);
+.player-color-button.is-selectable:active {
+  opacity: 0.72;
 }
-.player-color-label.is-empty {
-  color: #e6d2aa;
+.player-color-button.is-selectable:focus-visible {
+  outline: 2px solid #e6d2aa;
+  outline-offset: 1px;
 }
-.player-color-label:disabled {
+.player-color-button.is-empty .player-color-swatch {
+  border-style: dashed;
+  border-color: rgba(230, 210, 170, 0.75);
+}
+.player-color-button:disabled {
   opacity: 1;
 }
 .player-color-swatch {
-  width: 14px;
-  height: 14px;
+  width: 20px;
+  height: 20px;
   border: 1px solid rgba(255, 255, 255, 0.55);
   border-radius: 50%;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
@@ -322,7 +327,7 @@
   .modo-jogo-options { grid-template-columns: 1fr 1fr; }
   .mode-button { width: 100%; }
   .players-list li { gap: 8px; }
-  .player-identity { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .player-identity { gap: 8px; }
   .player-actions { gap: 6px; }
   .host-tag { margin-left: 0; padding: 3px 6px; font-size: 0.7rem; }
   .remove-button { padding: 5px 6px; }
