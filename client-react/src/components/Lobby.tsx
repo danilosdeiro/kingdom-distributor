@@ -72,6 +72,8 @@ const handleCompartilhar = () => {
   const [meuId, setMeuId] = useState<string | null>(null);
   const [modoDeJogo, setModoDeJogo] = useState<ModoDeJogo>('aleatorio');
   const [papeisPersonalizados, setPapeisPersonalizados] = useState<PapelSorteavel[]>([]);
+  const [coresMagicWar, setCoresMagicWar] = useState<CorMagicWar[]>([]);
+  const [seletorCorAberto, setSeletorCorAberto] = useState(false);
   
   useEffect(() => {
     if (!codigo) {
@@ -79,11 +81,13 @@ const handleCompartilhar = () => {
       return;
     }
     
-    const handleAtualizarLobby = (dados: { jogadores: Jogador[], hostId: string, modoDeJogo: ModoDeJogo }) => {
+    const handleAtualizarLobby = (dados: { jogadores: Jogador[], hostId: string, modoDeJogo: ModoDeJogo, coresMagicWar?: CorMagicWar[] }) => {
       setJogadores(dados.jogadores);
       setHostId(dados.hostId);
       setMeuId(getPlayerId());
       if (dados.modoDeJogo) setModoDeJogo(dados.modoDeJogo);
+      setCoresMagicWar(dados.coresMagicWar || []);
+      if (dados.modoDeJogo !== 'magic-war') setSeletorCorAberto(false);
       localStorage.setItem('jogadoresDaSala', JSON.stringify(dados.jogadores));
       localStorage.setItem('meuId', getPlayerId());
     };
@@ -154,6 +158,11 @@ const handleCompartilhar = () => {
   const handleDistribuirPapeis = () => {
     socket.emit('distribuirPapeis', { codigo, papeisPersonalizados });
   };
+
+  const handleSelecionarCor = (corId: string) => {
+    socket.emit('selecionarCorMagicWar', { codigo, corId });
+    setSeletorCorAberto(false);
+  };
   
   const handlePapelPersonalizadoChange = (papel: PapelSorteavel) => {
     setPapeisPersonalizados(prev => 
@@ -165,10 +174,11 @@ const handleCompartilhar = () => {
   const numJogadores = jogadores.length;
   const numPapeisExtrasNecessarios = numJogadores > 4 ? numJogadores - 4 : 0;
   const haJogadorReconectando = jogadores.some((jogador) => jogador.connected === false);
+  const todosEscolheramCor = jogadores.every((jogador) => Boolean(jogador.cor));
 
   let isButtonDisabled = true;
   if (modoDeJogo === 'magic-war') {
-    isButtonDisabled = numJogadores < 3 || numJogadores > 7;
+    isButtonDisabled = numJogadores < 3 || numJogadores > 7 || !todosEscolheramCor;
   } else if ([5, 6, 7].includes(numJogadores)) {
     if (modoDeJogo === 'personalizado') {
       isButtonDisabled = papeisPersonalizados.length !== numPapeisExtrasNecessarios;
@@ -205,11 +215,17 @@ const handleCompartilhar = () => {
               <li key={jogador.id}>
                 <div className="player-identity">
                   <span className="player-name">{jogador.nome}</span>
-                  {modoDeJogo === 'magic-war' && jogador.cor && (
-                    <span className="player-color-label">
-                      <span className="player-color-swatch" style={{ backgroundColor: jogador.cor.hex }} aria-hidden="true" />
-                      {jogador.cor.nome}
-                    </span>
+                  {modoDeJogo === 'magic-war' && (
+                    <button
+                      type="button"
+                      className={`player-color-label ${jogador.id === meuId ? 'is-selectable' : ''} ${!jogador.cor ? 'is-empty' : ''}`}
+                      onClick={() => jogador.id === meuId && setSeletorCorAberto(true)}
+                      disabled={jogador.id !== meuId}
+                      aria-label={jogador.id === meuId ? 'Escolher minha cor' : `Cor de ${jogador.nome}`}
+                    >
+                      <span className="player-color-swatch" style={{ backgroundColor: jogador.cor?.hex || 'transparent' }} aria-hidden="true" />
+                      {jogador.cor?.nome || (jogador.id === meuId ? 'Escolher cor' : 'Sem cor')}
+                    </button>
                   )}
                 </div>
                 <div className="player-actions">
@@ -284,6 +300,8 @@ const handleCompartilhar = () => {
           >
             {haJogadorReconectando
               ? 'Aguardando reconexão'
+              : modoDeJogo === 'magic-war' && numJogadores >= 3 && !todosEscolheramCor
+                ? 'Aguardando escolha das cores'
               : isButtonDisabled && (modoDeJogo === 'magic-war' ? numJogadores < 3 : ![5,6,7].includes(numJogadores))
                 ? 'Aguardando jogadores'
                 : modoDeJogo === 'magic-war'
@@ -292,6 +310,38 @@ const handleCompartilhar = () => {
           </button>
         )}
         {!euSouOHost && ( <div className="waiting-message"><p>Aguardando o Host iniciar o jogo...</p></div> )}
+
+        {seletorCorAberto && modoDeJogo === 'magic-war' && (
+          <div className="color-picker-backdrop" role="presentation" onClick={() => setSeletorCorAberto(false)}>
+            <div className="color-picker-dialog" role="dialog" aria-modal="true" aria-labelledby="color-picker-title" onClick={(event) => event.stopPropagation()}>
+              <div className="color-picker-header">
+                <h2 id="color-picker-title">Escolha sua cor</h2>
+                <button type="button" className="color-picker-close" onClick={() => setSeletorCorAberto(false)} aria-label="Fechar">×</button>
+              </div>
+              <div className="color-picker-grid">
+                {coresMagicWar.map((cor) => {
+                  const donoDaCor = jogadores.find((jogador) => jogador.cor?.id === cor.id);
+                  const indisponivel = Boolean(donoDaCor && donoDaCor.id !== meuId);
+                  const selecionada = donoDaCor?.id === meuId;
+
+                  return (
+                    <button
+                      type="button"
+                      key={cor.id}
+                      className={`color-option ${selecionada ? 'is-selected' : ''}`}
+                      onClick={() => handleSelecionarCor(cor.id)}
+                      disabled={indisponivel}
+                    >
+                      <span className="color-option-swatch" style={{ backgroundColor: cor.hex }} aria-hidden="true" />
+                      <span>{cor.nome}</span>
+                      {indisponivel && <small>Em uso</small>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         <button className="exit-button" onClick={handleSairDaSala}>
           Sair da Sala

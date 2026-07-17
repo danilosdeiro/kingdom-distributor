@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
+  MAGIC_WAR_COLORS,
   canStartGame,
   createMagicWarAssignments,
   ensureMagicWarColors,
@@ -12,6 +13,7 @@ const {
   normalizePlayerName,
   normalizeRoomCode,
   shuffle,
+  setMagicWarColor,
   transferMagicWarTargets,
   validateElimination,
 } = require('./gameRules');
@@ -99,6 +101,22 @@ test('Magic War transfers a fallen target to the killer', () => {
   assert.equal(deadHunter.alvoId, victim.id);
 });
 
+test('Magic War lets players reserve only available colors', () => {
+  const room = {
+    jogadores: [
+      { id: 'a', nome: 'A' },
+      { id: 'b', nome: 'B' },
+    ],
+  };
+
+  assert.equal(setMagicWarColor(room, 'a', 'red'), true);
+  assert.equal(room.jogadores[0].cor.nome, 'Vermelho');
+  assert.equal(setMagicWarColor(room, 'b', 'red'), false);
+  assert.equal(setMagicWarColor(room, 'b', 'blue'), true);
+  assert.equal(setMagicWarColor(room, 'ghost', 'green'), false);
+  assert.equal(setMagicWarColor(room, 'a', 'unknown'), false);
+});
+
 test('elimination validation rejects invalid reports', () => {
   const room = {
     papeisDesignados: [
@@ -136,6 +154,7 @@ test('lobby payload exposes stable player ids but hides socket ids', () => {
     modoDeJogo: 'magic-war',
     status: 'em_jogo',
     resultado: null,
+    coresMagicWar: MAGIC_WAR_COLORS,
     jogadores: [
       { id: 'player-host', nome: 'Host', connected: true, vivo: true, cor: { id: 'red', nome: 'Vermelho', hex: '#df4c4c' } },
       { id: 'player-2', nome: 'Guest', connected: false, vivo: false, cor: null },
