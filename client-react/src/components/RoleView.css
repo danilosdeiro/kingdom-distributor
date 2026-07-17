@@ -36,6 +36,26 @@
 .objetivo h3 { margin-top: 0; color: #E6D2AA; }
 .warning { font-weight: bold; color: #e74c3c !important; }
 
+.eliminated-host-notice {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 18px;
+  padding: 12px;
+  border: 1px solid #b8323a;
+  border-radius: 7px;
+  background: rgba(184, 50, 58, 0.16);
+  color: #d9d9dc;
+}
+
+.eliminated-host-notice strong {
+  color: #ff767d;
+  font-family: 'Cinzel', serif;
+}
+
+.eliminated-host-notice span {
+  font-size: 0.82rem;
+}
+
 .life-counter-panel {
   margin-bottom: 24px;
   text-align: left;
@@ -335,6 +355,17 @@
   margin-top: 24px;
 }
 
+.host-elimination-button {
+  border-color: #d6aa45;
+  color: #f0cb72;
+}
+
+.host-elimination-button:hover {
+  background: #d6aa45;
+  border-color: #d6aa45;
+  color: #171717;
+}
+
 .danger-action-button:hover {
   background-color: #d32f2f;
   border-color: #d32f2f;
@@ -457,6 +488,23 @@
   color: #e2e5e8;
   font-size: 1rem;
   font-weight: 700;
+}
+
+.survival-mission {
+  border-color: rgba(214, 170, 69, 0.42);
+}
+
+.survival-target {
+  margin: 12px 0 8px;
+  padding: 14px 10px;
+  border: 2px solid #d6aa45;
+  border-radius: 8px;
+  background: #29271f;
+  color: #f0cb72;
+  font-family: 'Cinzel', serif;
+  font-size: 1.35rem;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .commander-modal-backdrop {
@@ -589,6 +637,53 @@
 
 .commander-damage-row.is-lethal .commander-stepper strong {
   color: #ff848a;
+}
+
+.host-elimination-form {
+  display: grid;
+  gap: 14px;
+}
+
+.host-elimination-form label {
+  display: grid;
+  gap: 7px;
+  color: #c8c8cc;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.host-elimination-form select {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid #5b5b61;
+  border-radius: 6px;
+  background: #29292d;
+  color: #fff;
+  font: inherit;
+}
+
+.host-elimination-form select:disabled {
+  color: #777;
+  opacity: 0.68;
+}
+
+.confirm-host-elimination {
+  min-height: 48px;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 6px;
+  background: #b8323a;
+  color: #fff;
+  font-family: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.confirm-host-elimination:disabled {
+  background: #444;
+  color: #888;
+  cursor: not-allowed;
 }
 
 

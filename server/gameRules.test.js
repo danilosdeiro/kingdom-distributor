@@ -18,7 +18,7 @@ const {
   normalizeRoomCode,
   shuffle,
   setMagicWarColor,
-  transferMagicWarTargets,
+  setMagicWarSurvivalObjective,
   validateElimination,
 } = require('./gameRules');
 
@@ -89,19 +89,19 @@ test('Magic War gives each player a unique public color and a circular target', 
   assert.equal(new Set(assignments.map((assignment) => assignment.alvoId)).size, 3);
 });
 
-test('Magic War transfers a fallen target to the killer', () => {
+test('Magic War changes the hunter objective when another player kills the target', () => {
   const victim = { id: 'victim', nome: 'Vitima', cor: { id: 'blue', nome: 'Azul' }, vivo: false };
-  const killer = { id: 'killer', nome: 'Algoz', cor: { id: 'red', nome: 'Vermelho' }, vivo: true };
   const hunter = { id: 'hunter', alvoId: victim.id, vivo: true };
   const deadHunter = { id: 'dead-hunter', alvoId: victim.id, vivo: false };
-  const assignments = [victim, killer, hunter, deadHunter];
+  const assignments = [victim, hunter, deadHunter];
 
-  const affectedPlayers = transferMagicWarTargets(assignments, victim, killer);
+  const affectedPlayers = setMagicWarSurvivalObjective(assignments, victim);
 
   assert.deepEqual(affectedPlayers, [hunter]);
-  assert.equal(hunter.alvoId, killer.id);
-  assert.equal(hunter.alvoNome, killer.nome);
-  assert.equal(hunter.alvoCor.id, 'red');
+  assert.equal(hunter.alvoId, null);
+  assert.equal(hunter.alvoNome, null);
+  assert.equal(hunter.alvoCor, null);
+  assert.equal(hunter.objetivoSobrevivencia, true);
   assert.equal(deadHunter.alvoId, victim.id);
 });
 
