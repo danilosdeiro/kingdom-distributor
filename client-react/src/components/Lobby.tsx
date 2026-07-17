@@ -23,8 +23,15 @@ const TooltipWrapper = ({ children, text }: { children: React.ReactNode; text: s
   );
 };
 
-interface Jogador { id: string; nome: string; connected?: boolean; }
-type ModoDeJogo = 'aleatorio' | 'convencional' | 'personalizado';
+interface CorMagicWar {
+  id: string;
+  nome: string;
+  hex: string;
+  textColor?: string;
+}
+
+interface Jogador { id: string; nome: string; connected?: boolean; cor?: CorMagicWar | null; }
+type ModoDeJogo = 'aleatorio' | 'convencional' | 'personalizado' | 'magic-war';
 type PapelSorteavel = 'Usurpador' | 'Caçador' | 'Coringa';
 
 const PUBLIC_APP_URL = 'https://meukingdom.vercel.app';
@@ -160,7 +167,9 @@ const handleCompartilhar = () => {
   const haJogadorReconectando = jogadores.some((jogador) => jogador.connected === false);
 
   let isButtonDisabled = true;
-  if ([5, 6, 7].includes(numJogadores)) {
+  if (modoDeJogo === 'magic-war') {
+    isButtonDisabled = numJogadores < 3 || numJogadores > 7;
+  } else if ([5, 6, 7].includes(numJogadores)) {
     if (modoDeJogo === 'personalizado') {
       isButtonDisabled = papeisPersonalizados.length !== numPapeisExtrasNecessarios;
     } else if (modoDeJogo === 'convencional') {
@@ -194,7 +203,15 @@ const handleCompartilhar = () => {
           <ul>
             {jogadores.length > 0 ? jogadores.map((jogador) => (
               <li key={jogador.id}>
-                <span className="player-name">{jogador.nome}</span>
+                <div className="player-identity">
+                  <span className="player-name">{jogador.nome}</span>
+                  {modoDeJogo === 'magic-war' && jogador.cor && (
+                    <span className="player-color-label">
+                      <span className="player-color-swatch" style={{ backgroundColor: jogador.cor.hex }} aria-hidden="true" />
+                      {jogador.cor.nome}
+                    </span>
+                  )}
+                </div>
                 <div className="player-actions">
                   {jogador.connected === false && <span className="host-tag">Reconectando</span>}
                   {jogador.id === hostId && (
@@ -229,6 +246,12 @@ const handleCompartilhar = () => {
                 Personalizado
               </button>
             </TooltipWrapper>
+
+            <TooltipWrapper text="Para 3-7 jogadores. Cada cor recebe um alvo secreto; cumpra sua missão antes dos demais.">
+              <button className={`mode-button ${modoDeJogo === 'magic-war' ? 'active magic-war-mode' : ''}`} onClick={() => euSouOHost && handleMudarModo('magic-war')} disabled={!euSouOHost}>
+                Magic War
+              </button>
+            </TooltipWrapper>
           </div>
           
           {modoDeJogo === 'personalizado' && (
@@ -261,9 +284,11 @@ const handleCompartilhar = () => {
           >
             {haJogadorReconectando
               ? 'Aguardando reconexão'
-              : isButtonDisabled && ![5,6,7].includes(numJogadores)
+              : isButtonDisabled && (modoDeJogo === 'magic-war' ? numJogadores < 3 : ![5,6,7].includes(numJogadores))
                 ? 'Aguardando jogadores'
-                : `Distribuir Papéis para ${numJogadores} Jogadores`}
+                : modoDeJogo === 'magic-war'
+                  ? `Iniciar Magic War com ${numJogadores} Jogadores`
+                  : `Distribuir Papéis para ${numJogadores} Jogadores`}
           </button>
         )}
         {!euSouOHost && ( <div className="waiting-message"><p>Aguardando o Host iniciar o jogo...</p></div> )}

@@ -106,6 +106,35 @@
   overflow-wrap: anywhere;
 }
 
+.player-status-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.player-status-color,
+.role-reveal-role {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.player-status-color {
+  color: #c6cbd0;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.player-status-color-swatch {
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+  flex-shrink: 0;
+}
+
 .player-status-marker {
   width: 10px;
   height: 10px;
@@ -226,6 +255,62 @@
   color: #9da3ad;
   font-size: 0.85rem;
   font-style: normal;
+}
+
+.my-color-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 54px;
+  margin: 8px 0 18px;
+  padding: 10px 16px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  font-family: 'Cinzel', serif;
+  font-size: 1.45rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.my-color-swatch {
+  width: 18px;
+  height: 18px;
+  border: 3px solid currentColor;
+  border-radius: 50%;
+}
+
+.magic-war-mission {
+  margin: 10px 0 24px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.magic-war-mission > span {
+  color: #b9bec4;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.target-color {
+  margin: 12px 0 8px;
+  padding: 14px 10px;
+  border: 2px solid rgba(255, 255, 255, 0.48);
+  border-radius: 8px;
+  font-family: 'Cinzel', serif;
+  font-size: 1.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.magic-war-mission p {
+  margin: 0;
+  color: #e2e5e8;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 

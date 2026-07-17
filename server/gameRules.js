@@ -3,6 +3,17 @@ const crypto = require('crypto');
 const ROOM_CODE_SIZE = 4;
 const MIN_PLAYERS = 5;
 const MAX_PLAYERS = 7;
+const MAGIC_WAR_MIN_PLAYERS = 3;
+
+const MAGIC_WAR_COLORS = [
+  { id: 'white', nome: 'Branco', hex: '#f4efd8', textColor: '#171717' },
+  { id: 'blue', nome: 'Azul', hex: '#4b9fe8', textColor: '#ffffff' },
+  { id: 'black', nome: 'Preto', hex: '#34313a', textColor: '#ffffff' },
+  { id: 'red', nome: 'Vermelho', hex: '#df4c4c', textColor: '#ffffff' },
+  { id: 'green', nome: 'Verde', hex: '#48a868', textColor: '#ffffff' },
+  { id: 'colorless', nome: 'Incolor', hex: '#aeb4b8', textColor: '#171717' },
+  { id: 'gold', nome: 'Dourado', hex: '#d4a83f', textColor: '#171717' },
+];
 
 const OBJECTIVES = {
   Rei: 'Sobreviver a todo custo! Voce vence se for o ultimo jogador vivo ou junto ao cavaleiro.',
@@ -86,10 +97,77 @@ function getRoles(playerCount, gameMode, customRoles = []) {
 }
 
 function canStartGame(playerCount, gameMode, customRoles = []) {
+  if (gameMode === 'magic-war') {
+    return playerCount >= MAGIC_WAR_MIN_PLAYERS && playerCount <= MAX_PLAYERS;
+  }
+
   if (playerCount < MIN_PLAYERS || playerCount > MAX_PLAYERS) return false;
   if (gameMode === 'convencional') return playerCount === MIN_PLAYERS;
   if (gameMode === 'personalizado') return customRoles.length === playerCount - FIXED_ROLES.length;
   return true;
+}
+
+function ensureMagicWarColors(room, randomInt = crypto.randomInt) {
+  const usedColorIds = new Set();
+
+  room.jogadores.forEach((player) => {
+    const colorExists = MAGIC_WAR_COLORS.some((color) => color.id === player.cor?.id);
+    if (!colorExists || usedColorIds.has(player.cor.id)) {
+      delete player.cor;
+      return;
+    }
+
+    usedColorIds.add(player.cor.id);
+  });
+
+  const availableColors = shuffle(
+    MAGIC_WAR_COLORS.filter((color) => !usedColorIds.has(color.id)),
+    randomInt
+  );
+  room.jogadores.forEach((player) => {
+    if (!player.cor) {
+      player.cor = availableColors.shift();
+    }
+  });
+
+  return room.jogadores;
+}
+
+function transferMagicWarTargets(assignments, victim, killer) {
+  const affectedPlayers = assignments.filter((player) => (
+    player.vivo && player.alvoId === victim.id
+  ));
+
+  affectedPlayers.forEach((player) => {
+    player.alvoId = killer.id;
+    player.alvoNome = killer.nome;
+    player.alvoCor = killer.cor;
+  });
+
+  return affectedPlayers;
+}
+
+function createMagicWarAssignments(players, randomInt = crypto.randomInt) {
+  if (players.length < MAGIC_WAR_MIN_PLAYERS || players.length > MAGIC_WAR_COLORS.length) {
+    return [];
+  }
+
+  const orderedPlayers = shuffle(players, randomInt);
+  return orderedPlayers.map((player, index) => {
+    const target = orderedPlayers[(index + 1) % orderedPlayers.length];
+    return {
+      id: player.id,
+      socketId: player.socketId,
+      nome: player.nome,
+      papel: 'MagicWar',
+      cor: player.cor,
+      alvoId: target.id,
+      alvoNome: target.nome,
+      alvoCor: target.cor,
+      vivo: true,
+      abates: 0,
+    };
+  });
 }
 
 function validateElimination(room, victim, killer) {
@@ -113,6 +191,9 @@ function getLobbyPayload(room) {
       nome: player.nome,
       connected: player.connected,
       vivo: assignedRolesByPlayerId.get(player.id)?.vivo ?? true,
+      cor: room.modoDeJogo === 'magic-war'
+        ? player.cor || assignedRolesByPlayerId.get(player.id)?.cor || null
+        : null,
     })),
     hostId: room.hostId,
     modoDeJogo: room.modoDeJogo,
@@ -123,10 +204,14 @@ function getLobbyPayload(room) {
 
 module.exports = {
   DRAWABLE_ROLES,
+  MAGIC_WAR_COLORS,
+  MAGIC_WAR_MIN_PLAYERS,
   MAX_PLAYERS,
   MIN_PLAYERS,
   OBJECTIVES,
   canStartGame,
+  createMagicWarAssignments,
+  ensureMagicWarColors,
   generateRoomCode,
   getLobbyPayload,
   getObjective,
@@ -137,5 +222,6 @@ module.exports = {
   normalizeRole,
   normalizeRoomCode,
   shuffle,
+  transferMagicWarTargets,
   validateElimination,
 };
