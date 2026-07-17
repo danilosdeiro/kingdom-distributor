@@ -54,7 +54,30 @@
 }
 .players-list .no-players { color: #888; font-style: italic; text-align: center; padding: 20px 0; background-color: transparent; }
 .players-list li:last-child { border-bottom: none; }
+.player-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
 .player-name { word-break: break-all; }
+.player-color-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #cfd2d5;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.player-color-swatch {
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
 .player-actions { display: flex; align-items: center; gap: 10px; }
 .host-tag { background-color: #E6D2AA; color: #1c1c1e; font-size: 0.8rem; font-weight: bold; padding: 4px 8px; border-radius: 10px; margin-left: 10px; flex-shrink: 0; }
 .host-crown {
@@ -71,7 +94,7 @@
 .host-options { border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 25px; }
 .host-options h4 { margin: 0 0 15px 0; color: #E6D2AA; text-align: center; font-size: 1.1rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
 
-.modo-jogo-options { display: flex; justify-content: center; align-items: center; gap: 10px; background-color: rgba(0, 0, 0, 0.2); border-radius: 8px; padding: 5px; }
+.modo-jogo-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; background-color: rgba(0, 0, 0, 0.2); border-radius: 8px; padding: 5px; }
 .mode-button {
   position: relative;
   flex: 1;
@@ -91,6 +114,7 @@
   height: 42px;
 }
 .mode-button.active { background-color: #E6D2AA; color: #1c1c1e; border-color: #E6D2AA; }
+.mode-button.active.magic-war-mode { background-color: #4a9b62; border-color: #67bd80; color: #fff; }
 .host-options.read-only .mode-button { cursor: default; }
 .mode-button:not(.active):not(:disabled):hover { background-color: rgba(255, 255, 255, 0.1); color: #fff; }
 .mode-button.disabled { color: #8d8989; cursor: not-allowed; opacity: 0.6; }
@@ -176,8 +200,15 @@
 
 @media (max-width: 600px) {
   .sala-info h1 { font-size: 1.8rem; }
-  .modo-jogo-options { flex-direction: column; }
+  .lobby-container { padding: 10px; }
+  .lobby-card-unified { padding: 22px 16px; gap: 20px; }
+  .modo-jogo-options { grid-template-columns: 1fr 1fr; }
   .mode-button { width: 100%; }
+  .players-list li { gap: 8px; }
+  .player-identity { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .player-actions { gap: 6px; }
+  .host-tag { margin-left: 0; padding: 3px 6px; font-size: 0.7rem; }
+  .remove-button { padding: 5px 6px; }
 }
 
 .share-button {

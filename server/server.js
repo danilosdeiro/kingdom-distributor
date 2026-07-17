@@ -9,6 +9,8 @@ const cors = require('cors');
 const {
   MAX_PLAYERS,
   canStartGame,
+  createMagicWarAssignments,
+  ensureMagicWarColors,
   generateRoomCode,
   getLobbyPayload,
   getObjective,
@@ -19,6 +21,7 @@ const {
   normalizeRole,
   normalizeRoomCode,
   shuffle,
+  transferMagicWarTargets,
   validateElimination,
 } = require('./gameRules');
 
@@ -193,10 +196,29 @@ function updateAssignedRoleSocketId(sala, playerId, socketId) {
 function emitAssignedRole(socket, assignedRole) {
   if (!assignedRole) return;
 
-  socket.emit('seuPapel', {
+  socket.emit('seuPapel', getAssignedRolePayload(assignedRole));
+}
+
+function getAssignedRolePayload(assignedRole) {
+  if (assignedRole.papel === 'MagicWar') {
+    return {
+      modoDeJogo: 'magic-war',
+      papel: 'Magic War',
+      objetivo: `Elimine a cor ${assignedRole.alvoCor.nome}.`,
+      cor: assignedRole.cor,
+      alvo: {
+        id: assignedRole.alvoId,
+        nome: assignedRole.alvoNome,
+        cor: assignedRole.alvoCor,
+      },
+    };
+  }
+
+  return {
+    modoDeJogo: 'kingdom',
     papel: getRoleLabel(assignedRole.papel),
     objetivo: getObjective(assignedRole.papel),
-  });
+  };
 }
 
 function findRoomBySocket(socketId) {
@@ -212,7 +234,8 @@ function getRoleReveal(sala) {
   return (sala.papeisDesignados || []).map((player) => ({
     id: player.id,
     nome: player.nome,
-    papel: getRoleLabel(player.papel),
+    papel: player.papel === 'MagicWar' ? player.cor.nome : getRoleLabel(player.papel),
+    cor: player.cor || null,
     vivo: player.vivo,
   }));
 }
@@ -300,12 +323,24 @@ io.on('connection', (socket) => {
       if (sala.hostId === oldId) {
         sala.hostId = jogadorId;
       }
+
+      if (oldId !== jogadorId && sala.papeisDesignados) {
+        const assignedPlayer = sala.papeisDesignados.find((player) => player.id === oldId);
+        if (assignedPlayer) assignedPlayer.id = jogadorId;
+        sala.papeisDesignados.forEach((player) => {
+          if (player.alvoId === oldId) player.alvoId = jogadorId;
+        });
+      }
     } else {
       if (sala.jogadores.length >= MAX_PLAYERS) {
         return socket.emit('erro', { mensagem: `A sala '${codigoSala}' esta cheia.` });
       }
 
       sala.jogadores.push({ id: jogadorId, socketId: socket.id, nome: nomeLimpo, connected: true });
+    }
+
+    if (sala.modoDeJogo === 'magic-war') {
+      ensureMagicWarColors(sala);
     }
 
     const assignedRole = updateAssignedRoleSocketId(sala, jogadorId, socket.id);
@@ -342,8 +377,12 @@ io.on('connection', (socket) => {
     const sala = saloes[codigoSala];
 
     const jogador = sala?.jogadores.find((player) => player.socketId === socket.id);
-    if (sala && jogador?.id === sala.hostId) {
+    const modosPermitidos = new Set(['aleatorio', 'convencional', 'personalizado', 'magic-war']);
+    if (sala && jogador?.id === sala.hostId && sala.status !== 'em_jogo' && modosPermitidos.has(novoModo)) {
       sala.modoDeJogo = novoModo;
+      if (novoModo === 'magic-war') {
+        ensureMagicWarColors(sala);
+      }
       persistRoom(sala);
       emitLobby(codigoSala, sala);
     }
@@ -391,26 +430,28 @@ io.on('connection', (socket) => {
     sala.status = 'em_jogo';
     sala.resultado = null;
 
-    const papeis = getRoles(numeroDeJogadores, sala.modoDeJogo, papeisPersonalizados);
-    const papeisEmbaralhados = shuffle(papeis);
+    if (sala.modoDeJogo === 'magic-war') {
+      ensureMagicWarColors(sala);
+      sala.papeisDesignados = createMagicWarAssignments(sala.jogadores);
+    } else {
+      const papeis = getRoles(numeroDeJogadores, sala.modoDeJogo, papeisPersonalizados);
+      const papeisEmbaralhados = shuffle(papeis);
 
-    sala.papeisDesignados = sala.jogadores.map((jogador, index) => ({
-      id: jogador.id,
-      socketId: jogador.socketId,
-      nome: jogador.nome,
-      papel: normalizeRole(papeisEmbaralhados[index]),
-      vivo: true,
-      abates: 0,
-    }));
+      sala.papeisDesignados = sala.jogadores.map((jogador, index) => ({
+        id: jogador.id,
+        socketId: jogador.socketId,
+        nome: jogador.nome,
+        papel: normalizeRole(papeisEmbaralhados[index]),
+        vivo: true,
+        abates: 0,
+      }));
+    }
 
     persistRoom(sala);
     emitLobby(codigoSala, sala);
 
     sala.papeisDesignados.forEach((jogador) => {
-      io.to(jogador.socketId).emit('seuPapel', {
-        papel: getRoleLabel(jogador.papel),
-        objetivo: getObjective(jogador.papel),
-      });
+      io.to(jogador.socketId).emit('seuPapel', getAssignedRolePayload(jogador));
     });
   });
 
@@ -423,11 +464,17 @@ io.on('connection', (socket) => {
       return socket.emit('fimDeJogo', sala.resultado);
     }
 
+    const jogadorReportando = sala.jogadores.find((player) => player.socketId === socket.id);
     const vitimaId = normalizePlayerId(vitimaPlayerId);
-    const vitima = sala.papeisDesignados.find((player) => player.id === vitimaId || player.socketId === socket.id);
+    if (!jogadorReportando || jogadorReportando.id !== vitimaId) {
+      return socket.emit('erro', { mensagem: 'Voce so pode confirmar a sua propria eliminacao.' });
+    }
+
+    const vitima = sala.papeisDesignados.find((player) => player.id === vitimaId);
+    const assassinoIdLimpo = normalizePlayerId(assassinoId);
     const nomeAssassino = normalizePlayerName(assassinoNome);
     const assassino = sala.papeisDesignados.find((player) => (
-      player.id === assassinoId || (nomeAssassino && player.nome === nomeAssassino)
+      player.id === assassinoIdLimpo || (nomeAssassino && player.nome === nomeAssassino)
     ));
 
     if (!validateElimination(sala, vitima, assassino)) {
@@ -439,6 +486,38 @@ io.on('connection', (socket) => {
     sala.historicoMortes = sala.historicoMortes || [];
     sala.historicoMortes.push({ vitima: vitima.nome, assassino: assassino.nome });
     persistRoom(sala);
+
+    if (sala.modoDeJogo === 'magic-war') {
+      if (assassino.alvoId === vitima.id) {
+        return finishGame(
+          codigoSala,
+          sala,
+          assassino.nome,
+          `${assassino.nome} eliminou a cor ${vitima.cor.nome} e cumpriu sua missao!`
+        );
+      }
+
+      const cacadoresDoAlvo = transferMagicWarTargets(sala.papeisDesignados, vitima, assassino);
+
+      cacadoresDoAlvo.forEach((cacador) => {
+        if (cacador.socketId) {
+          io.to(cacador.socketId).emit('seuPapel', getAssignedRolePayload(cacador));
+          io.to(cacador.socketId).emit('mensagemSistema', {
+            mensagem: `Seu alvo mudou. Agora voce deve eliminar a cor ${assassino.cor.nome}.`,
+          });
+        }
+      });
+
+      const sobreviventes = sala.papeisDesignados.filter((player) => player.vivo);
+      persistRoom(sala);
+      if (sobreviventes.length === 1) {
+        return finishGame(codigoSala, sala, sobreviventes[0].nome, `${sobreviventes[0].nome} foi o ultimo sobrevivente!`);
+      }
+
+      emitLobby(codigoSala, sala);
+      socket.emit('morteConfirmada');
+      return;
+    }
 
     if (vitima.papel === 'Coringa' && sala.historicoMortes.length === 1) {
       return finishGame(codigoSala, sala, 'Coringa', 'O Coringa foi o primeiro a ser eliminado e venceu o jogo!');

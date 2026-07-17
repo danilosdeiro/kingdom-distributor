@@ -13,11 +13,26 @@ interface Jogador {
   nome: string;
   connected?: boolean;
   vivo?: boolean;
+  cor?: CorMagicWar | null;
+}
+
+interface CorMagicWar {
+  id: string;
+  nome: string;
+  hex: string;
+  textColor?: string;
 }
 
 interface PapelInfo {
   papel: string;
   objetivo: string;
+  modoDeJogo?: 'kingdom' | 'magic-war';
+  cor?: CorMagicWar;
+  alvo?: {
+    id: string;
+    nome: string;
+    cor: CorMagicWar;
+  };
 }
 
 interface RevelacaoPapel {
@@ -25,6 +40,7 @@ interface RevelacaoPapel {
   nome: string;
   papel: string;
   vivo: boolean;
+  cor?: CorMagicWar | null;
 }
 
 interface GameResult {
@@ -202,7 +218,15 @@ export function RoleView() {
                 key={jogador.id}
                 aria-label={`${jogador.nome} ${eliminado ? 'eliminado' : 'em jogo'}`}
               >
-                <span className="player-status-name">{jogador.nome}</span>
+                <div className="player-status-identity">
+                  <span className="player-status-name">{jogador.nome}</span>
+                  {jogador.cor && (
+                    <span className="player-status-color">
+                      <span className="player-status-color-swatch" style={{ backgroundColor: jogador.cor.hex }} aria-hidden="true" />
+                      {jogador.cor.nome}
+                    </span>
+                  )}
+                </div>
                 <span className="player-status-marker" aria-hidden="true" />
               </div>
             );
@@ -231,7 +255,10 @@ export function RoleView() {
               {resultado.revelacao.map((player) => (
                 <div className="role-reveal-item" key={player.id}>
                   <span>{player.nome}</span>
-                  <strong>{player.papel}</strong>
+                  <strong className="role-reveal-role">
+                    {player.cor && <span className="player-status-color-swatch" style={{ backgroundColor: player.cor.hex }} aria-hidden="true" />}
+                    {player.papel}
+                  </strong>
                   <em>{player.vivo ? 'Vivo' : 'Eliminado'}</em>
                 </div>
               ))}
@@ -274,16 +301,33 @@ export function RoleView() {
   return (
     <div className="role-container">
       <div className="role-card">
-        <p>Seu Papel Secreto é:</p>
+        <p>{meuPapel.modoDeJogo === 'magic-war' ? 'Sua cor é:' : 'Seu Papel Secreto é:'}</p>
+
+        {meuPapel.modoDeJogo === 'magic-war' && meuPapel.cor && (
+          <div className="my-color-banner" style={{ backgroundColor: meuPapel.cor.hex, color: meuPapel.cor.textColor || '#fff' }}>
+            <span className="my-color-swatch" aria-hidden="true" />
+            {meuPapel.cor.nome}
+          </div>
+        )}
 
         {papelVisivel ? (
-          <>
-            <h1>{meuPapel.papel}</h1>
-            <div className="objetivo">
-              <h3>Seu Objetivo:</h3>
-              <p>{meuPapel.objetivo}</p>
+          meuPapel.modoDeJogo === 'magic-war' && meuPapel.alvo ? (
+            <div className="magic-war-mission">
+              <span>Seu alvo secreto</span>
+              <div className="target-color" style={{ backgroundColor: meuPapel.alvo.cor.hex, color: meuPapel.alvo.cor.textColor || '#fff' }}>
+                {meuPapel.alvo.cor.nome}
+              </div>
+              <p>{meuPapel.alvo.nome}</p>
             </div>
-          </>
+          ) : (
+            <>
+              <h1>{meuPapel.papel}</h1>
+              <div className="objetivo">
+                <h3>Seu Objetivo:</h3>
+                <p>{meuPapel.objetivo}</p>
+              </div>
+            </>
+          )
         ) : (
           <div className="role-hidden-panel">
             <p>Toque no botão abaixo para revelar o seu papel.</p>
@@ -297,7 +341,7 @@ export function RoleView() {
           {papelVisivel ? 'Esconder Meu Papel' : 'Revelar Meu Papel'}
         </button>
 
-        <p className="warning">Não revele seu papel a ninguém!</p>
+        <p className="warning">{meuPapel.modoDeJogo === 'magic-war' ? 'Não revele seu alvo a ninguém!' : 'Não revele seu papel a ninguém!'}</p>
 
         {renderListaJogadores()}
 
@@ -333,7 +377,7 @@ export function RoleView() {
                   .filter((jogador) => jogador.id !== meuId && jogador.vivo !== false)
                   .map((jogador) => (
                     <option key={jogador.id} value={jogador.id}>
-                      {jogador.nome}
+                      {jogador.cor ? `${jogador.cor.nome} - ` : ''}{jogador.nome}
                     </option>
                   ))}
               </select>

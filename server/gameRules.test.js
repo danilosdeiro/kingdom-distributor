@@ -2,6 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   canStartGame,
+  createMagicWarAssignments,
+  ensureMagicWarColors,
   generateRoomCode,
   getLobbyPayload,
   getRoleLabel,
@@ -10,6 +12,7 @@ const {
   normalizePlayerName,
   normalizeRoomCode,
   shuffle,
+  transferMagicWarTargets,
   validateElimination,
 } = require('./gameRules');
 
@@ -53,6 +56,47 @@ test('start rules validate player counts and custom roles', () => {
   assert.equal(canStartGame(5, 'convencional'), true);
   assert.equal(canStartGame(6, 'personalizado', ['Usurpador']), false);
   assert.equal(canStartGame(6, 'personalizado', ['Usurpador', 'Coringa']), true);
+  assert.equal(canStartGame(2, 'magic-war'), false);
+  assert.equal(canStartGame(3, 'magic-war'), true);
+  assert.equal(canStartGame(7, 'magic-war'), true);
+});
+
+test('Magic War gives each player a unique public color and a circular target', () => {
+  const room = {
+    jogadores: [
+      { id: 'a', nome: 'A', socketId: 'socket-a' },
+      { id: 'b', nome: 'B', socketId: 'socket-b' },
+      { id: 'c', nome: 'C', socketId: 'socket-c' },
+    ],
+  };
+
+  ensureMagicWarColors(room, () => 0);
+  const assignments = createMagicWarAssignments(room.jogadores, () => 0);
+
+  assert.equal(new Set(room.jogadores.map((player) => player.cor.id)).size, 3);
+  assert.equal(assignments.length, 3);
+  assignments.forEach((assignment) => {
+    assert.notEqual(assignment.id, assignment.alvoId);
+    assert.ok(assignment.cor);
+    assert.ok(assignment.alvoCor);
+  });
+  assert.equal(new Set(assignments.map((assignment) => assignment.alvoId)).size, 3);
+});
+
+test('Magic War transfers a fallen target to the killer', () => {
+  const victim = { id: 'victim', nome: 'Vitima', cor: { id: 'blue', nome: 'Azul' }, vivo: false };
+  const killer = { id: 'killer', nome: 'Algoz', cor: { id: 'red', nome: 'Vermelho' }, vivo: true };
+  const hunter = { id: 'hunter', alvoId: victim.id, vivo: true };
+  const deadHunter = { id: 'dead-hunter', alvoId: victim.id, vivo: false };
+  const assignments = [victim, killer, hunter, deadHunter];
+
+  const affectedPlayers = transferMagicWarTargets(assignments, victim, killer);
+
+  assert.deepEqual(affectedPlayers, [hunter]);
+  assert.equal(hunter.alvoId, killer.id);
+  assert.equal(hunter.alvoNome, killer.nome);
+  assert.equal(hunter.alvoCor.id, 'red');
+  assert.equal(deadHunter.alvoId, victim.id);
 });
 
 test('elimination validation rejects invalid reports', () => {
@@ -74,11 +118,11 @@ test('elimination validation rejects invalid reports', () => {
 test('lobby payload exposes stable player ids but hides socket ids', () => {
   const payload = getLobbyPayload({
     hostId: 'player-host',
-    modoDeJogo: 'aleatorio',
+    modoDeJogo: 'magic-war',
     status: 'em_jogo',
     resultado: null,
     jogadores: [
-      { id: 'player-host', socketId: 'socket-host', nome: 'Host', connected: true },
+      { id: 'player-host', socketId: 'socket-host', nome: 'Host', connected: true, cor: { id: 'red', nome: 'Vermelho', hex: '#df4c4c' } },
       { id: 'player-2', socketId: 'socket-2', nome: 'Guest', connected: false },
     ],
     papeisDesignados: [
@@ -89,12 +133,12 @@ test('lobby payload exposes stable player ids but hides socket ids', () => {
 
   assert.deepEqual(payload, {
     hostId: 'player-host',
-    modoDeJogo: 'aleatorio',
+    modoDeJogo: 'magic-war',
     status: 'em_jogo',
     resultado: null,
     jogadores: [
-      { id: 'player-host', nome: 'Host', connected: true, vivo: true },
-      { id: 'player-2', nome: 'Guest', connected: false, vivo: false },
+      { id: 'player-host', nome: 'Host', connected: true, vivo: true, cor: { id: 'red', nome: 'Vermelho', hex: '#df4c4c' } },
+      { id: 'player-2', nome: 'Guest', connected: false, vivo: false, cor: null },
     ],
   });
 });
