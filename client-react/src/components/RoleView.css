@@ -1,10 +1,10 @@
 .role-container {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   min-height: 100vh;
   min-height: 100dvh;
-  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  padding: max(78px, calc(env(safe-area-inset-top) + 16px)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   font-family: sans-serif;
   box-sizing: border-box;
 }
@@ -135,7 +135,8 @@
 
 .life-side span {
   position: absolute;
-  top: 14px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .life-minus {
@@ -143,7 +144,7 @@
 }
 
 .life-minus span {
-  left: 18px;
+  left: 24px;
 }
 
 .life-plus {
@@ -151,7 +152,7 @@
 }
 
 .life-plus span {
-  right: 18px;
+  right: 24px;
 }
 
 .life-current-value {
@@ -181,6 +182,13 @@
 
 .life-current-value.is-zero strong {
   color: #ff7b82;
+}
+
+.private-role-label {
+  margin: 0 0 8px;
+  font-size: 0.88rem !important;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .role-hidden-panel {
@@ -257,6 +265,22 @@
   display: flex;
   align-items: center;
   min-width: 0;
+}
+
+.player-status-name-button {
+  min-width: 0;
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.player-status-name-button:focus-visible {
+  outline: 2px solid #e6d2aa;
+  outline-offset: 3px;
+  border-radius: 3px;
 }
 
 .role-reveal-role {
@@ -631,6 +655,39 @@
   color: #ff848a;
 }
 
+.commander-damage-readonly {
+  min-height: 50px;
+}
+
+.commander-damage-total {
+  display: grid;
+  place-items: center;
+  min-width: 46px;
+  height: 42px;
+  border-radius: 6px;
+  background: #151517;
+  color: #fff;
+  font-size: 1.1rem;
+}
+
+.commander-damage-row.is-lethal .commander-damage-total {
+  color: #ff848a;
+}
+
+.add-partner-button {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid #6a665c;
+  border-radius: 6px;
+  background: #302f2b;
+  color: #e6d2aa;
+  font-family: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 .host-elimination-form {
   display: grid;
   gap: 14px;
@@ -682,7 +739,7 @@
 @media (max-width: 600px) {
   .role-container {
     align-items: flex-start;
-    padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    padding: max(74px, calc(env(safe-area-inset-top) + 10px)) max(10px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
   }
 
   .role-card {
@@ -770,6 +827,14 @@
   .commander-stepper strong {
     width: 38px;
     height: 42px;
+  }
+
+  .life-minus span {
+    left: 20px;
+  }
+
+  .life-plus span {
+    right: 20px;
   }
 
   .back-button {

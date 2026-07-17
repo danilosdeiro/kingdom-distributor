@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const {
   DEFAULT_LIFE,
   MAGIC_WAR_COLORS,
+  addPartnerCommander,
   adjustCommanderDamage,
   adjustPlayerLife,
   canStartGame,
@@ -16,6 +17,7 @@ const {
   normalizePlayerId,
   normalizePlayerName,
   normalizeRoomCode,
+  resetRoomForLobby,
   shuffle,
   setMagicWarColor,
   setMagicWarSurvivalObjective,
@@ -132,25 +134,51 @@ test('combat state starts at 40 life and resets commander damage', () => {
   initializeCombatState(room);
 
   assert.deepEqual(room.jogadores, [
-    { id: 'a', vida: DEFAULT_LIFE, danoComandante: {} },
-    { id: 'b', vida: DEFAULT_LIFE, danoComandante: {} },
+    { id: 'a', vida: DEFAULT_LIFE, danoComandante: {}, commanderCount: 1 },
+    { id: 'b', vida: DEFAULT_LIFE, danoComandante: {}, commanderCount: 1 },
   ]);
 });
 
 test('players can adjust only valid life and commander damage steps', () => {
   const player = { id: 'a', vida: 40, danoComandante: {} };
-  const playerIds = new Set(['a', 'b', 'c']);
+  const players = [player, { id: 'b', commanderCount: 1 }, { id: 'c', commanderCount: 1 }];
 
   assert.equal(adjustPlayerLife(player, -1), true);
   assert.equal(player.vida, 39);
   assert.equal(adjustPlayerLife(player, 5), false);
-  assert.equal(adjustCommanderDamage(player, 'b', 1, playerIds), true);
-  assert.equal(adjustCommanderDamage(player, 'b', 1, playerIds), true);
+  assert.equal(adjustCommanderDamage(player, 'b', 1, players), true);
+  assert.equal(adjustCommanderDamage(player, 'b', 1, players), true);
   assert.equal(player.danoComandante.b, 2);
-  assert.equal(adjustCommanderDamage(player, 'b', -1, playerIds), true);
+  assert.equal(player.vida, 37);
+  assert.equal(adjustCommanderDamage(player, 'b', -1, players), true);
   assert.equal(player.danoComandante.b, 1);
-  assert.equal(adjustCommanderDamage(player, 'a', 1, playerIds), false);
-  assert.equal(adjustCommanderDamage(player, 'ghost', 1, playerIds), false);
+  assert.equal(player.vida, 38);
+  assert.equal(adjustCommanderDamage(player, 'a', 1, players), true);
+  assert.equal(player.vida, 37);
+  assert.equal(adjustCommanderDamage(player, 'ghost', 1, players), false);
+  assert.equal(adjustCommanderDamage(player, 'b:partner', 1, players), false);
+
+  assert.equal(addPartnerCommander({ jogadores: players }, 'b'), true);
+  assert.equal(adjustCommanderDamage(player, 'b:partner', 1, players), true);
+  assert.equal(player.danoComandante['b:partner'], 1);
+  assert.equal(player.vida, 36);
+});
+
+test('returning after a finished game resets the room for a new lobby', () => {
+  const room = {
+    status: 'finalizado',
+    resultado: { vencedor: 'A' },
+    historicoMortes: [{ vitima: 'B' }],
+    papeisDesignados: [{ id: 'a', papel: 'Rei' }],
+    jogadores: [{ id: 'a', vida: 12, danoComandante: { b: 8 }, commanderCount: 2 }],
+  };
+
+  assert.equal(resetRoomForLobby(room), true);
+  assert.equal(room.status, 'lobby');
+  assert.equal(room.resultado, null);
+  assert.equal(room.papeisDesignados, null);
+  assert.deepEqual(room.historicoMortes, []);
+  assert.deepEqual(room.jogadores[0], { id: 'a', vida: DEFAULT_LIFE, danoComandante: {}, commanderCount: 1 });
 });
 
 test('elimination validation rejects invalid reports', () => {
@@ -192,8 +220,8 @@ test('lobby payload exposes stable player ids but hides socket ids', () => {
     resultado: null,
     coresMagicWar: MAGIC_WAR_COLORS,
     jogadores: [
-      { id: 'player-host', nome: 'Host', connected: true, vivo: true, vida: 40, danoComandante: {}, cor: { id: 'red', nome: 'Vermelho', hex: '#df4c4c' } },
-      { id: 'player-2', nome: 'Guest', connected: false, vivo: false, vida: 40, danoComandante: {}, cor: null },
+      { id: 'player-host', nome: 'Host', connected: true, vivo: true, vida: 40, danoComandante: {}, commanderCount: 1, cor: { id: 'red', nome: 'Vermelho', hex: '#df4c4c' } },
+      { id: 'player-2', nome: 'Guest', connected: false, vivo: false, vida: 40, danoComandante: {}, commanderCount: 1, cor: null },
     ],
   });
 });

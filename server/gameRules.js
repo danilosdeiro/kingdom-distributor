@@ -6,6 +6,7 @@ const MAX_PLAYERS = 7;
 const MAGIC_WAR_MIN_PLAYERS = 3;
 const DEFAULT_LIFE = 40;
 const COMMANDER_DAMAGE_LIMIT = 21;
+const PARTNER_COMMANDER_SUFFIX = ':partner';
 
 const MAGIC_WAR_COLORS = [
   { id: 'white', nome: 'Branco', hex: '#f4efd8', textColor: '#171717' },
@@ -202,6 +203,7 @@ function initializeCombatState(room) {
   room.jogadores.forEach((player) => {
     player.vida = DEFAULT_LIFE;
     player.danoComandante = {};
+    player.commanderCount = 1;
   });
 }
 
@@ -213,15 +215,49 @@ function adjustPlayerLife(player, delta) {
   return true;
 }
 
-function adjustCommanderDamage(player, commanderId, delta, playerIds) {
-  if (!player || !commanderId || commanderId === player.id || ![-1, 1].includes(delta)) return false;
-  if (!playerIds.has(commanderId)) return false;
+function getCommanderOwnerId(commanderId) {
+  return commanderId.endsWith(PARTNER_COMMANDER_SUFFIX)
+    ? commanderId.slice(0, -PARTNER_COMMANDER_SUFFIX.length)
+    : commanderId;
+}
+
+function adjustCommanderDamage(player, commanderId, delta, players) {
+  if (!player || !commanderId || ![-1, 1].includes(delta)) return false;
+
+  const commanderOwnerId = getCommanderOwnerId(commanderId);
+  const commanderOwner = players.find((item) => item.id === commanderOwnerId);
+  const isPartnerCommander = commanderId.endsWith(PARTNER_COMMANDER_SUFFIX);
+  if (!commanderOwner || (isPartnerCommander && commanderOwner.commanderCount !== 2)) return false;
 
   player.danoComandante = player.danoComandante || {};
   const currentDamage = Number.isInteger(player.danoComandante[commanderId])
     ? player.danoComandante[commanderId]
     : 0;
-  player.danoComandante[commanderId] = Math.max(0, Math.min(999, currentDamage + delta));
+  const nextDamage = Math.max(0, Math.min(999, currentDamage + delta));
+  const appliedDelta = nextDamage - currentDamage;
+  player.danoComandante[commanderId] = nextDamage;
+
+  const currentLife = Number.isInteger(player.vida) ? player.vida : DEFAULT_LIFE;
+  player.vida = Math.max(-999, Math.min(999, currentLife - appliedDelta));
+  return true;
+}
+
+function addPartnerCommander(room, playerId) {
+  const player = room?.jogadores?.find((item) => item.id === playerId);
+  if (!player) return false;
+
+  player.commanderCount = 2;
+  return true;
+}
+
+function resetRoomForLobby(room) {
+  if (!room) return false;
+
+  room.status = 'lobby';
+  room.resultado = null;
+  room.papeisDesignados = null;
+  room.historicoMortes = [];
+  initializeCombatState(room);
   return true;
 }
 
@@ -238,6 +274,7 @@ function getLobbyPayload(room) {
       vivo: assignedRolesByPlayerId.get(player.id)?.vivo ?? true,
       vida: Number.isInteger(player.vida) ? player.vida : DEFAULT_LIFE,
       danoComandante: player.danoComandante || {},
+      commanderCount: player.commanderCount === 2 ? 2 : 1,
       cor: room.modoDeJogo === 'magic-war'
         ? player.cor || assignedRolesByPlayerId.get(player.id)?.cor || null
         : null,
@@ -259,6 +296,7 @@ module.exports = {
   MAX_PLAYERS,
   MIN_PLAYERS,
   OBJECTIVES,
+  addPartnerCommander,
   canStartGame,
   adjustCommanderDamage,
   adjustPlayerLife,
@@ -274,6 +312,7 @@ module.exports = {
   normalizePlayerId,
   normalizeRole,
   normalizeRoomCode,
+  resetRoomForLobby,
   shuffle,
   setMagicWarColor,
   setMagicWarSurvivalObjective,

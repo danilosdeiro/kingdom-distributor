@@ -8,11 +8,13 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const {
   DEFAULT_LIFE,
+  addPartnerCommander,
   adjustCommanderDamage,
   adjustPlayerLife,
   MAX_PLAYERS,
   canStartGame,
   createMagicWarAssignments,
+  ensureMagicWarColors,
   generateRoomCode,
   getLobbyPayload,
   getObjective,
@@ -23,6 +25,7 @@ const {
   normalizePlayerName,
   normalizeRole,
   normalizeRoomCode,
+  resetRoomForLobby,
   shuffle,
   setMagicWarColor,
   setMagicWarSurvivalObjective,
@@ -347,6 +350,21 @@ io.on('connection', (socket) => {
           if (player.alvoId === oldId) player.alvoId = jogadorId;
         });
       }
+
+      if (oldId !== jogadorId) {
+        sala.jogadores.forEach((player) => {
+          if (Number.isInteger(player.danoComandante?.[oldId])) {
+            player.danoComandante[jogadorId] = player.danoComandante[oldId];
+            delete player.danoComandante[oldId];
+          }
+
+          const oldPartnerId = `${oldId}:partner`;
+          if (Number.isInteger(player.danoComandante?.[oldPartnerId])) {
+            player.danoComandante[`${jogadorId}:partner`] = player.danoComandante[oldPartnerId];
+            delete player.danoComandante[oldPartnerId];
+          }
+        });
+      }
     } else {
       if (sala.jogadores.length >= MAX_PLAYERS) {
         return socket.emit('erro', { mensagem: `A sala '${codigoSala}' esta cheia.` });
@@ -452,16 +470,13 @@ io.on('connection', (socket) => {
       return socket.emit('erro', { mensagem: 'Aguarde todos reconectarem antes de distribuir os papeis.' });
     }
 
-    if (sala.modoDeJogo === 'magic-war' && sala.jogadores.some((player) => !player.cor)) {
-      return socket.emit('erro', { mensagem: 'Todos precisam escolher uma cor antes de iniciar.' });
-    }
-
     sala.historicoMortes = [];
     sala.status = 'em_jogo';
     sala.resultado = null;
     initializeCombatState(sala);
 
     if (sala.modoDeJogo === 'magic-war') {
+      ensureMagicWarColors(sala);
       sala.papeisDesignados = createMagicWarAssignments(sala.jogadores);
     } else {
       const papeis = getRoles(numeroDeJogadores, sala.modoDeJogo, papeisPersonalizados);
@@ -508,15 +523,31 @@ io.on('connection', (socket) => {
     const sala = saloes[codigoSala];
     const jogador = sala?.jogadores.find((player) => player.socketId === socket.id);
     const papel = sala?.papeisDesignados?.find((player) => player.id === jogador?.id);
-    const jogadoresDaPartida = new Set((sala?.papeisDesignados || []).map((player) => player.id));
 
     if (!sala || sala.status !== 'em_jogo' || !jogador || papel?.vivo === false) {
       return socket.emit('erro', { mensagem: 'Nao e possivel alterar o dano de comandante agora.' });
     }
 
-    const comandanteIdLimpo = normalizePlayerId(comandanteId);
-    if (!adjustCommanderDamage(jogador, comandanteIdLimpo, Number(delta), jogadoresDaPartida)) {
+    const comandanteIdLimpo = String(comandanteId || '').trim().slice(0, 100);
+    if (!adjustCommanderDamage(jogador, comandanteIdLimpo, Number(delta), sala.jogadores)) {
       return socket.emit('erro', { mensagem: 'Alteracao de dano de comandante invalida.' });
+    }
+
+    persistRoom(sala);
+    emitLobby(codigoSala, sala);
+  });
+
+  socket.on('adicionarSegundoComandante', ({ codigo }) => {
+    const codigoSala = normalizeRoomCode(codigo);
+    const sala = saloes[codigoSala];
+    const jogador = sala?.jogadores.find((player) => player.socketId === socket.id);
+
+    if (!sala || sala.status !== 'em_jogo' || !jogador) {
+      return socket.emit('erro', { mensagem: 'Nao e possivel adicionar um comandante agora.' });
+    }
+
+    if (!addPartnerCommander(sala, jogador.id)) {
+      return socket.emit('erro', { mensagem: 'Nao foi possivel adicionar o segundo comandante.' });
     }
 
     persistRoom(sala);
@@ -651,6 +682,22 @@ io.on('connection', (socket) => {
     }
 
     socket.leave(codigoSala);
+  });
+
+  socket.on('voltarAoLobby', ({ codigo }) => {
+    const codigoSala = normalizeRoomCode(codigo);
+    const sala = saloes[codigoSala];
+    const jogador = sala?.jogadores.find((player) => player.socketId === socket.id);
+
+    if (!sala || !jogador) return;
+    if (sala.status !== 'finalizado' && sala.status !== 'lobby') {
+      return socket.emit('erro', { mensagem: 'A partida ainda nao terminou.' });
+    }
+
+    if (sala.status === 'finalizado') resetRoomForLobby(sala);
+    persistRoom(sala);
+    io.to(codigoSala).emit('lobbyReaberto');
+    emitLobby(codigoSala, sala);
   });
 
   socket.on('disconnect', () => {
