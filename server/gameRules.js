@@ -149,15 +149,16 @@ function setMagicWarColor(room, playerId, colorId) {
   return true;
 }
 
-function transferMagicWarTargets(assignments, victim, killer) {
+function setMagicWarSurvivalObjective(assignments, victim) {
   const affectedPlayers = assignments.filter((player) => (
     player.vivo && player.alvoId === victim.id
   ));
 
   affectedPlayers.forEach((player) => {
-    player.alvoId = killer.id;
-    player.alvoNome = killer.nome;
-    player.alvoCor = killer.cor;
+    player.alvoId = null;
+    player.alvoNome = null;
+    player.alvoCor = null;
+    player.objetivoSobrevivencia = true;
   });
 
   return affectedPlayers;
@@ -180,6 +181,7 @@ function createMagicWarAssignments(players, randomInt = crypto.randomInt) {
       alvoId: target.id,
       alvoNome: target.nome,
       alvoCor: target.cor,
+      objetivoSobrevivencia: false,
       vivo: true,
       abates: 0,
     };
@@ -274,6 +276,6 @@ module.exports = {
   normalizeRoomCode,
   shuffle,
   setMagicWarColor,
-  transferMagicWarTargets,
+  setMagicWarSurvivalObjective,
   validateElimination,
 };

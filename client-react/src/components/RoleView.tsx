@@ -30,11 +30,12 @@ interface PapelInfo {
   objetivo: string;
   modoDeJogo?: 'kingdom' | 'magic-war';
   cor?: CorMagicWar;
+  objetivoSobrevivencia?: boolean;
   alvo?: {
     id: string;
     nome: string;
     cor: CorMagicWar;
-  };
+  } | null;
 }
 
 interface RevelacaoPapel {
@@ -67,6 +68,10 @@ export function RoleView() {
   const [meuId, setMeuId] = useState('');
   const [resultado, setResultado] = useState<GameResult | null>(null);
   const [modalDanoComandanteAberto, setModalDanoComandanteAberto] = useState(false);
+  const [hostId, setHostId] = useState<string | null>(null);
+  const [modalRegistroHostAberto, setModalRegistroHostAberto] = useState(false);
+  const [vitimaSelecionadaId, setVitimaSelecionadaId] = useState('');
+  const [eliminadorSelecionadoId, setEliminadorSelecionadoId] = useState('');
 
   const navigate = useNavigate();
 
@@ -121,8 +126,9 @@ export function RoleView() {
       papelStorage.set(novoPapelInfo);
     };
 
-    const handleAtualizarLobby = (dados: { jogadores: Jogador[]; status?: string; resultado?: GameResult | null }) => {
+    const handleAtualizarLobby = (dados: { jogadores: Jogador[]; hostId?: string; status?: string; resultado?: GameResult | null }) => {
       setJogadoresVivos(dados.jogadores);
+      if (dados.hostId) setHostId(dados.hostId);
       localStorage.setItem('jogadoresDaSala', JSON.stringify(dados.jogadores));
       if (dados.jogadores.some((jogador) => jogador.id === getPlayerId() && jogador.vivo === false)) {
         setEstouMorto(true);
@@ -180,6 +186,25 @@ export function RoleView() {
     setModalMorteAberto(false);
   };
 
+  const confirmarEliminacaoPeloHost = () => {
+    if (!vitimaSelecionadaId || !eliminadorSelecionadoId || vitimaSelecionadaId === eliminadorSelecionadoId) {
+      toast.error('Selecione a vítima e quem deu o último golpe.');
+      return;
+    }
+
+    const codigoSala = localStorage.getItem('salaAtual');
+    const eliminador = jogadoresVivos.find((jogador) => jogador.id === eliminadorSelecionadoId);
+    socket.emit('jogadorEliminado', {
+      codigo: codigoSala,
+      vitimaPlayerId: vitimaSelecionadaId,
+      assassinoId: eliminadorSelecionadoId,
+      assassinoNome: eliminador?.nome,
+    });
+    setModalRegistroHostAberto(false);
+    setVitimaSelecionadaId('');
+    setEliminadorSelecionadoId('');
+  };
+
   const voltarAoLobby = () => {
     const codigoSala = localStorage.getItem('salaAtual');
     if (codigoSala) {
@@ -210,6 +235,8 @@ export function RoleView() {
   };
 
   const renderContadorVida = () => {
+    if (estouMorto) return null;
+
     const jogadorAtual = jogadoresVivos.find((jogador) => jogador.id === meuId);
     if (!jogadorAtual) return null;
 
@@ -326,7 +353,7 @@ export function RoleView() {
     );
   }
 
-  if (estouMorto) {
+  if (estouMorto && meuId !== hostId) {
     return (
       <div className="role-container">
         <div className="role-card" style={{ border: '1px solid #d32f2f' }}>
@@ -349,6 +376,13 @@ export function RoleView() {
   return (
     <div className="role-container">
       <div className="role-card">
+        {estouMorto && (
+          <div className="eliminated-host-notice">
+            <strong>ELIMINADO</strong>
+            <span>Você ainda pode registrar as eliminações como host.</span>
+          </div>
+        )}
+
         {renderContadorVida()}
 
         <p>{meuPapel.modoDeJogo === 'magic-war' ? 'Sua cor é:' : 'Seu Papel Secreto é:'}</p>
@@ -361,14 +395,22 @@ export function RoleView() {
         )}
 
         {papelVisivel ? (
-          meuPapel.modoDeJogo === 'magic-war' && meuPapel.alvo ? (
-            <div className="magic-war-mission">
-              <span>Seu alvo secreto</span>
-              <div className="target-color" style={{ backgroundColor: meuPapel.alvo.cor.hex, color: meuPapel.alvo.cor.textColor || '#fff' }}>
-                {meuPapel.alvo.cor.nome}
+          meuPapel.modoDeJogo === 'magic-war' ? (
+            meuPapel.objetivoSobrevivencia ? (
+              <div className="magic-war-mission survival-mission">
+                <span>Novo objetivo</span>
+                <div className="survival-target">Último sobrevivente</div>
+                <p>Seu alvo foi eliminado por outro jogador.</p>
               </div>
-              <p>{meuPapel.alvo.nome}</p>
-            </div>
+            ) : meuPapel.alvo ? (
+              <div className="magic-war-mission">
+                <span>Seu alvo secreto</span>
+                <div className="target-color" style={{ backgroundColor: meuPapel.alvo.cor.hex, color: meuPapel.alvo.cor.textColor || '#fff' }}>
+                  {meuPapel.alvo.cor.nome}
+                </div>
+                <p>{meuPapel.alvo.nome}</p>
+              </div>
+            ) : null
           ) : (
             <>
               <h1>{meuPapel.papel}</h1>
@@ -391,16 +433,27 @@ export function RoleView() {
           {papelVisivel ? 'Esconder Meu Papel' : 'Revelar Meu Papel'}
         </button>
 
-        <p className="warning">{meuPapel.modoDeJogo === 'magic-war' ? 'Não revele seu alvo a ninguém!' : 'Não revele seu papel a ninguém!'}</p>
+        <p className="warning">{meuPapel.modoDeJogo === 'magic-war' ? 'Não revele seu objetivo a ninguém!' : 'Não revele seu papel a ninguém!'}</p>
 
         {renderListaJogadores()}
 
-        <button
-          className="back-button danger-action-button"
-          onClick={() => setModalMorteAberto(true)}
-        >
-          Fui Eliminado
-        </button>
+        {meuId === hostId && (
+          <button
+            className="back-button host-elimination-button"
+            onClick={() => setModalRegistroHostAberto(true)}
+          >
+            Registrar Eliminação
+          </button>
+        )}
+
+        {!estouMorto && (
+          <button
+            className="back-button danger-action-button"
+            onClick={() => setModalMorteAberto(true)}
+          >
+            Fui Eliminado
+          </button>
+        )}
 
         <div className="role-actions">
           <button className="back-button" onClick={voltarAoLobby}>
@@ -471,6 +524,51 @@ export function RoleView() {
                       </div>
                     );
                   })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {modalRegistroHostAberto && (
+          <div className="commander-modal-backdrop" role="presentation" onClick={() => setModalRegistroHostAberto(false)}>
+            <div className="commander-modal" role="dialog" aria-modal="true" aria-labelledby="host-elimination-title" onClick={(event) => event.stopPropagation()}>
+              <div className="commander-modal-header">
+                <div>
+                  <h2 id="host-elimination-title">Registrar eliminação</h2>
+                  <p>Informe quem foi eliminado e quem deu o último golpe.</p>
+                </div>
+                <button type="button" className="commander-modal-close" onClick={() => setModalRegistroHostAberto(false)} aria-label="Fechar">×</button>
+              </div>
+              <div className="host-elimination-form">
+                <label>
+                  Jogador eliminado
+                  <select
+                    value={vitimaSelecionadaId}
+                    onChange={(event) => {
+                      setVitimaSelecionadaId(event.target.value);
+                      if (event.target.value === eliminadorSelecionadoId) setEliminadorSelecionadoId('');
+                    }}
+                  >
+                    <option value="">Selecione...</option>
+                    {jogadoresVivos.filter((jogador) => jogador.vivo !== false).map((jogador) => (
+                      <option key={jogador.id} value={jogador.id}>{jogador.cor ? `${jogador.cor.nome} - ` : ''}{jogador.nome}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Responsável pelo último golpe
+                  <select value={eliminadorSelecionadoId} onChange={(event) => setEliminadorSelecionadoId(event.target.value)} disabled={!vitimaSelecionadaId}>
+                    <option value="">Selecione...</option>
+                    {jogadoresVivos
+                      .filter((jogador) => jogador.vivo !== false && jogador.id !== vitimaSelecionadaId)
+                      .map((jogador) => (
+                        <option key={jogador.id} value={jogador.id}>{jogador.cor ? `${jogador.cor.nome} - ` : ''}{jogador.nome}</option>
+                      ))}
+                  </select>
+                </label>
+                <button type="button" className="confirm-host-elimination" onClick={confirmarEliminacaoPeloHost} disabled={!vitimaSelecionadaId || !eliminadorSelecionadoId}>
+                  Confirmar eliminação
+                </button>
               </div>
             </div>
           </div>

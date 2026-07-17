@@ -25,7 +25,7 @@ const {
   normalizeRoomCode,
   shuffle,
   setMagicWarColor,
-  transferMagicWarTargets,
+  setMagicWarSurvivalObjective,
   validateElimination,
 } = require('./gameRules');
 
@@ -205,10 +205,22 @@ function emitAssignedRole(socket, assignedRole) {
 
 function getAssignedRolePayload(assignedRole) {
   if (assignedRole.papel === 'MagicWar') {
+    if (assignedRole.objetivoSobrevivencia) {
+      return {
+        modoDeJogo: 'magic-war',
+        papel: 'Magic War',
+        objetivo: 'Seja o ultimo jogador sobrevivente.',
+        objetivoSobrevivencia: true,
+        cor: assignedRole.cor,
+        alvo: null,
+      };
+    }
+
     return {
       modoDeJogo: 'magic-war',
       papel: 'Magic War',
       objetivo: `Elimine a cor ${assignedRole.alvoCor.nome}.`,
+      objetivoSobrevivencia: false,
       cor: assignedRole.cor,
       alvo: {
         id: assignedRole.alvoId,
@@ -522,8 +534,11 @@ io.on('connection', (socket) => {
 
     const jogadorReportando = sala.jogadores.find((player) => player.socketId === socket.id);
     const vitimaId = normalizePlayerId(vitimaPlayerId);
-    if (!jogadorReportando || jogadorReportando.id !== vitimaId) {
-      return socket.emit('erro', { mensagem: 'Voce so pode confirmar a sua propria eliminacao.' });
+    const podeRegistrarEliminacao = jogadorReportando && (
+      jogadorReportando.id === vitimaId || jogadorReportando.id === sala.hostId
+    );
+    if (!podeRegistrarEliminacao) {
+      return socket.emit('erro', { mensagem: 'Apenas a vitima ou o host podem registrar a eliminacao.' });
     }
 
     const vitima = sala.papeisDesignados.find((player) => player.id === vitimaId);
@@ -544,7 +559,7 @@ io.on('connection', (socket) => {
     persistRoom(sala);
 
     if (sala.modoDeJogo === 'magic-war') {
-      if (assassino.alvoId === vitima.id) {
+      if (!assassino.objetivoSobrevivencia && assassino.alvoId === vitima.id) {
         return finishGame(
           codigoSala,
           sala,
@@ -553,13 +568,13 @@ io.on('connection', (socket) => {
         );
       }
 
-      const cacadoresDoAlvo = transferMagicWarTargets(sala.papeisDesignados, vitima, assassino);
+      const cacadoresDoAlvo = setMagicWarSurvivalObjective(sala.papeisDesignados, vitima);
 
       cacadoresDoAlvo.forEach((cacador) => {
         if (cacador.socketId) {
           io.to(cacador.socketId).emit('seuPapel', getAssignedRolePayload(cacador));
           io.to(cacador.socketId).emit('mensagemSistema', {
-            mensagem: `Seu alvo mudou. Agora voce deve eliminar a cor ${assassino.cor.nome}.`,
+            mensagem: 'Seu alvo foi eliminado por outro jogador. Agora voce precisa ser o ultimo sobrevivente.',
           });
         }
       });
@@ -571,7 +586,7 @@ io.on('connection', (socket) => {
       }
 
       emitLobby(codigoSala, sala);
-      socket.emit('morteConfirmada');
+      if (vitima.socketId) io.to(vitima.socketId).emit('morteConfirmada');
       return;
     }
 
@@ -612,7 +627,7 @@ io.on('connection', (socket) => {
     }
 
     emitLobby(codigoSala, sala);
-    socket.emit('morteConfirmada');
+    if (vitima.socketId) io.to(vitima.socketId).emit('morteConfirmada');
   });
 
   socket.on('sairDaSala', ({ codigo }) => {
