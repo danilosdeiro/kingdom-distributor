@@ -4,6 +4,8 @@ const ROOM_CODE_SIZE = 4;
 const MIN_PLAYERS = 5;
 const MAX_PLAYERS = 7;
 const MAGIC_WAR_MIN_PLAYERS = 3;
+const DEFAULT_LIFE = 40;
+const COMMANDER_DAMAGE_LIMIT = 21;
 
 const MAGIC_WAR_COLORS = [
   { id: 'white', nome: 'Branco', hex: '#f4efd8', textColor: '#171717' },
@@ -194,6 +196,33 @@ function validateElimination(room, victim, killer) {
   return playersInGame.has(victim.id) && playersInGame.has(killer.id);
 }
 
+function initializeCombatState(room) {
+  room.jogadores.forEach((player) => {
+    player.vida = DEFAULT_LIFE;
+    player.danoComandante = {};
+  });
+}
+
+function adjustPlayerLife(player, delta) {
+  if (!player || ![-1, 1].includes(delta)) return false;
+
+  const currentLife = Number.isInteger(player.vida) ? player.vida : DEFAULT_LIFE;
+  player.vida = Math.max(-999, Math.min(999, currentLife + delta));
+  return true;
+}
+
+function adjustCommanderDamage(player, commanderId, delta, playerIds) {
+  if (!player || !commanderId || commanderId === player.id || ![-1, 1].includes(delta)) return false;
+  if (!playerIds.has(commanderId)) return false;
+
+  player.danoComandante = player.danoComandante || {};
+  const currentDamage = Number.isInteger(player.danoComandante[commanderId])
+    ? player.danoComandante[commanderId]
+    : 0;
+  player.danoComandante[commanderId] = Math.max(0, Math.min(999, currentDamage + delta));
+  return true;
+}
+
 function getLobbyPayload(room) {
   const assignedRolesByPlayerId = new Map(
     (room.papeisDesignados || []).map((player) => [player.id, player])
@@ -205,6 +234,8 @@ function getLobbyPayload(room) {
       nome: player.nome,
       connected: player.connected,
       vivo: assignedRolesByPlayerId.get(player.id)?.vivo ?? true,
+      vida: Number.isInteger(player.vida) ? player.vida : DEFAULT_LIFE,
+      danoComandante: player.danoComandante || {},
       cor: room.modoDeJogo === 'magic-war'
         ? player.cor || assignedRolesByPlayerId.get(player.id)?.cor || null
         : null,
@@ -218,6 +249,8 @@ function getLobbyPayload(room) {
 }
 
 module.exports = {
+  COMMANDER_DAMAGE_LIMIT,
+  DEFAULT_LIFE,
   DRAWABLE_ROLES,
   MAGIC_WAR_COLORS,
   MAGIC_WAR_MIN_PLAYERS,
@@ -225,6 +258,8 @@ module.exports = {
   MIN_PLAYERS,
   OBJECTIVES,
   canStartGame,
+  adjustCommanderDamage,
+  adjustPlayerLife,
   createMagicWarAssignments,
   ensureMagicWarColors,
   generateRoomCode,
@@ -232,6 +267,7 @@ module.exports = {
   getObjective,
   getRoleLabel,
   getRoles,
+  initializeCombatState,
   normalizePlayerName,
   normalizePlayerId,
   normalizeRole,

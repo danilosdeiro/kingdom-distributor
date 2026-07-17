@@ -14,6 +14,8 @@ interface Jogador {
   connected?: boolean;
   vivo?: boolean;
   cor?: CorMagicWar | null;
+  vida?: number;
+  danoComandante?: Record<string, number>;
 }
 
 interface CorMagicWar {
@@ -64,6 +66,7 @@ export function RoleView() {
   const [jogadoresVivos, setJogadoresVivos] = useState<Jogador[]>([]);
   const [meuId, setMeuId] = useState('');
   const [resultado, setResultado] = useState<GameResult | null>(null);
+  const [modalDanoComandanteAberto, setModalDanoComandanteAberto] = useState(false);
 
   const navigate = useNavigate();
 
@@ -196,6 +199,48 @@ export function RoleView() {
     navigate('/');
   };
 
+  const alterarVida = (delta: -1 | 1) => {
+    const codigoSala = localStorage.getItem('salaAtual');
+    if (codigoSala) socket.emit('alterarVida', { codigo: codigoSala, delta });
+  };
+
+  const alterarDanoComandante = (comandanteId: string, delta: -1 | 1) => {
+    const codigoSala = localStorage.getItem('salaAtual');
+    if (codigoSala) socket.emit('alterarDanoComandante', { codigo: codigoSala, comandanteId, delta });
+  };
+
+  const renderContadorVida = () => {
+    const jogadorAtual = jogadoresVivos.find((jogador) => jogador.id === meuId);
+    if (!jogadorAtual) return null;
+
+    const vida = jogadorAtual.vida ?? 40;
+    const maiorDanoComandante = Math.max(0, ...Object.values(jogadorAtual.danoComandante || {}));
+
+    return (
+      <section className="life-counter-panel" aria-label="Seu contador de vida">
+        <div className="life-counter-header">
+          <h2>Sua vida</h2>
+          <button type="button" className="commander-damage-button" onClick={() => setModalDanoComandanteAberto(true)}>
+            Dano de comandante
+            {maiorDanoComandante > 0 && <span className={maiorDanoComandante >= 21 ? 'is-lethal' : ''}>{maiorDanoComandante}</span>}
+          </button>
+        </div>
+        <div className="life-counter-control">
+          <button type="button" className="life-side life-minus" onClick={() => alterarVida(-1)} aria-label="Diminuir uma vida">
+            <span aria-hidden="true">−</span>
+          </button>
+          <div className={`life-current-value ${vida <= 0 ? 'is-zero' : ''}`} aria-live="polite">
+            <strong>{vida}</strong>
+            <small>VIDA</small>
+          </div>
+          <button type="button" className="life-side life-plus" onClick={() => alterarVida(1)} aria-label="Aumentar uma vida">
+            <span aria-hidden="true">+</span>
+          </button>
+        </div>
+      </section>
+    );
+  };
+
   const renderListaJogadores = () => {
     if (jogadoresVivos.length === 0) return null;
 
@@ -227,7 +272,10 @@ export function RoleView() {
                     </span>
                   )}
                 </div>
-                <span className="player-status-marker" aria-hidden="true" />
+                <div className="player-status-stats">
+                  <span className={`player-life-value ${(jogador.vida ?? 40) <= 0 ? 'is-zero' : ''}`}>{jogador.vida ?? 40} PV</span>
+                  <span className="player-status-marker" aria-hidden="true" />
+                </div>
               </div>
             );
           })}
@@ -301,6 +349,8 @@ export function RoleView() {
   return (
     <div className="role-container">
       <div className="role-card">
+        {renderContadorVida()}
+
         <p>{meuPapel.modoDeJogo === 'magic-war' ? 'Sua cor é:' : 'Seu Papel Secreto é:'}</p>
 
         {meuPapel.modoDeJogo === 'magic-war' && meuPapel.cor && (
@@ -385,6 +435,42 @@ export function RoleView() {
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button onClick={confirmarEliminacao} style={{ flex: 1, padding: '12px', background: '#d32f2f', color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>Confirmar</button>
                 <button onClick={() => setModalMorteAberto(false)} style={{ flex: 1, padding: '12px', background: '#444', color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>Cancelar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {modalDanoComandanteAberto && (
+          <div className="commander-modal-backdrop" role="presentation" onClick={() => setModalDanoComandanteAberto(false)}>
+            <div className="commander-modal" role="dialog" aria-modal="true" aria-labelledby="commander-modal-title" onClick={(event) => event.stopPropagation()}>
+              <div className="commander-modal-header">
+                <div>
+                  <h2 id="commander-modal-title">Dano de comandante</h2>
+                  <p>Dano que você recebeu</p>
+                </div>
+                <button type="button" className="commander-modal-close" onClick={() => setModalDanoComandanteAberto(false)} aria-label="Fechar">×</button>
+              </div>
+              <div className="commander-damage-list">
+                {jogadoresVivos
+                  .filter((jogador) => jogador.id !== meuId)
+                  .map((jogador) => {
+                    const jogadorAtual = jogadoresVivos.find((item) => item.id === meuId);
+                    const dano = jogadorAtual?.danoComandante?.[jogador.id] ?? 0;
+
+                    return (
+                      <div className={`commander-damage-row ${dano >= 21 ? 'is-lethal' : ''}`} key={jogador.id}>
+                        <div className="commander-player">
+                          {jogador.cor && <span className="player-status-color-swatch" style={{ backgroundColor: jogador.cor.hex }} aria-hidden="true" />}
+                          <span>{jogador.nome}</span>
+                        </div>
+                        <div className="commander-stepper">
+                          <button type="button" onClick={() => alterarDanoComandante(jogador.id, -1)} aria-label={`Diminuir dano de comandante de ${jogador.nome}`}>−</button>
+                          <strong>{dano}</strong>
+                          <button type="button" onClick={() => alterarDanoComandante(jogador.id, 1)} aria-label={`Aumentar dano de comandante de ${jogador.nome}`}>+</button>
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           </div>
