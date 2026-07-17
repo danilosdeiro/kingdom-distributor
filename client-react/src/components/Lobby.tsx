@@ -218,13 +218,13 @@ const handleCompartilhar = () => {
                   {modoDeJogo === 'magic-war' && (
                     <button
                       type="button"
-                      className={`player-color-label ${jogador.id === meuId ? 'is-selectable' : ''} ${!jogador.cor ? 'is-empty' : ''}`}
+                      className={`player-color-button ${jogador.id === meuId ? 'is-selectable' : ''} ${!jogador.cor ? 'is-empty' : ''}`}
                       onClick={() => jogador.id === meuId && setSeletorCorAberto(true)}
                       disabled={jogador.id !== meuId}
-                      aria-label={jogador.id === meuId ? 'Escolher minha cor' : `Cor de ${jogador.nome}`}
+                      aria-label={jogador.id === meuId ? `Escolher minha cor${jogador.cor ? `, atual: ${jogador.cor.nome}` : ''}` : `Cor de ${jogador.nome}: ${jogador.cor?.nome || 'não escolhida'}`}
+                      title={jogador.id === meuId ? 'Escolher cor' : jogador.cor?.nome || 'Cor não escolhida'}
                     >
                       <span className="player-color-swatch" style={{ backgroundColor: jogador.cor?.hex || 'transparent' }} aria-hidden="true" />
-                      {jogador.cor?.nome || (jogador.id === meuId ? 'Escolher cor' : 'Sem cor')}
                     </button>
                   )}
                 </div>

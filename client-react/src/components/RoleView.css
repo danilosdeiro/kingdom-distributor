@@ -255,22 +255,14 @@
 
 .player-status-identity {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  align-items: center;
   min-width: 0;
 }
 
-.player-status-color,
 .role-reveal-role {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-
-.player-status-color {
-  color: #c6cbd0;
-  font-size: 0.76rem;
-  font-weight: 700;
 }
 
 .player-status-color-swatch {
