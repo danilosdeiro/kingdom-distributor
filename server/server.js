@@ -10,7 +10,6 @@ const {
   MAX_PLAYERS,
   canStartGame,
   createMagicWarAssignments,
-  ensureMagicWarColors,
   generateRoomCode,
   getLobbyPayload,
   getObjective,
@@ -21,6 +20,7 @@ const {
   normalizeRole,
   normalizeRoomCode,
   shuffle,
+  setMagicWarColor,
   transferMagicWarTargets,
   validateElimination,
 } = require('./gameRules');
@@ -339,10 +339,6 @@ io.on('connection', (socket) => {
       sala.jogadores.push({ id: jogadorId, socketId: socket.id, nome: nomeLimpo, connected: true });
     }
 
-    if (sala.modoDeJogo === 'magic-war') {
-      ensureMagicWarColors(sala);
-    }
-
     const assignedRole = updateAssignedRoleSocketId(sala, jogadorId, socket.id);
     socket.join(codigoSala);
     persistRoom(sala);
@@ -380,12 +376,26 @@ io.on('connection', (socket) => {
     const modosPermitidos = new Set(['aleatorio', 'convencional', 'personalizado', 'magic-war']);
     if (sala && jogador?.id === sala.hostId && sala.status !== 'em_jogo' && modosPermitidos.has(novoModo)) {
       sala.modoDeJogo = novoModo;
-      if (novoModo === 'magic-war') {
-        ensureMagicWarColors(sala);
-      }
       persistRoom(sala);
       emitLobby(codigoSala, sala);
     }
+  });
+
+  socket.on('selecionarCorMagicWar', ({ codigo, corId }) => {
+    const codigoSala = normalizeRoomCode(codigo);
+    const sala = saloes[codigoSala];
+    const jogador = sala?.jogadores.find((player) => player.socketId === socket.id);
+
+    if (!sala || !jogador || sala.modoDeJogo !== 'magic-war' || sala.status === 'em_jogo') {
+      return socket.emit('erro', { mensagem: 'Nao e possivel escolher uma cor agora.' });
+    }
+
+    if (!setMagicWarColor(sala, jogador.id, String(corId || ''))) {
+      return socket.emit('erro', { mensagem: 'Essa cor nao esta mais disponivel.' });
+    }
+
+    persistRoom(sala);
+    emitLobby(codigoSala, sala);
   });
 
   socket.on('removerJogador', ({ codigo, idJogadorARemover }) => {
@@ -426,12 +436,15 @@ io.on('connection', (socket) => {
       return socket.emit('erro', { mensagem: 'Aguarde todos reconectarem antes de distribuir os papeis.' });
     }
 
+    if (sala.modoDeJogo === 'magic-war' && sala.jogadores.some((player) => !player.cor)) {
+      return socket.emit('erro', { mensagem: 'Todos precisam escolher uma cor antes de iniciar.' });
+    }
+
     sala.historicoMortes = [];
     sala.status = 'em_jogo';
     sala.resultado = null;
 
     if (sala.modoDeJogo === 'magic-war') {
-      ensureMagicWarColors(sala);
       sala.papeisDesignados = createMagicWarAssignments(sala.jogadores);
     } else {
       const papeis = getRoles(numeroDeJogadores, sala.modoDeJogo, papeisPersonalizados);

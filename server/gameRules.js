@@ -133,6 +133,20 @@ function ensureMagicWarColors(room, randomInt = crypto.randomInt) {
   return room.jogadores;
 }
 
+function setMagicWarColor(room, playerId, colorId) {
+  const player = room.jogadores.find((item) => item.id === playerId);
+  const color = MAGIC_WAR_COLORS.find((item) => item.id === colorId);
+  if (!player || !color) return false;
+
+  const colorInUse = room.jogadores.some((item) => (
+    item.id !== playerId && item.cor?.id === colorId
+  ));
+  if (colorInUse) return false;
+
+  player.cor = color;
+  return true;
+}
+
 function transferMagicWarTargets(assignments, victim, killer) {
   const affectedPlayers = assignments.filter((player) => (
     player.vivo && player.alvoId === victim.id
@@ -199,6 +213,7 @@ function getLobbyPayload(room) {
     modoDeJogo: room.modoDeJogo,
     status: room.status,
     resultado: room.resultado,
+    coresMagicWar: room.modoDeJogo === 'magic-war' ? MAGIC_WAR_COLORS : [],
   };
 }
 
@@ -222,6 +237,7 @@ module.exports = {
   normalizeRole,
   normalizeRoomCode,
   shuffle,
+  setMagicWarColor,
   transferMagicWarTargets,
   validateElimination,
 };
