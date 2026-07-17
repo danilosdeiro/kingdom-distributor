@@ -1,7 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
+  DEFAULT_LIFE,
   MAGIC_WAR_COLORS,
+  adjustCommanderDamage,
+  adjustPlayerLife,
   canStartGame,
   createMagicWarAssignments,
   ensureMagicWarColors,
@@ -9,6 +12,7 @@ const {
   getLobbyPayload,
   getRoleLabel,
   getRoles,
+  initializeCombatState,
   normalizePlayerId,
   normalizePlayerName,
   normalizeRoomCode,
@@ -117,6 +121,38 @@ test('Magic War lets players reserve only available colors', () => {
   assert.equal(setMagicWarColor(room, 'a', 'unknown'), false);
 });
 
+test('combat state starts at 40 life and resets commander damage', () => {
+  const room = {
+    jogadores: [
+      { id: 'a', vida: 3, danoComandante: { b: 20 } },
+      { id: 'b' },
+    ],
+  };
+
+  initializeCombatState(room);
+
+  assert.deepEqual(room.jogadores, [
+    { id: 'a', vida: DEFAULT_LIFE, danoComandante: {} },
+    { id: 'b', vida: DEFAULT_LIFE, danoComandante: {} },
+  ]);
+});
+
+test('players can adjust only valid life and commander damage steps', () => {
+  const player = { id: 'a', vida: 40, danoComandante: {} };
+  const playerIds = new Set(['a', 'b', 'c']);
+
+  assert.equal(adjustPlayerLife(player, -1), true);
+  assert.equal(player.vida, 39);
+  assert.equal(adjustPlayerLife(player, 5), false);
+  assert.equal(adjustCommanderDamage(player, 'b', 1, playerIds), true);
+  assert.equal(adjustCommanderDamage(player, 'b', 1, playerIds), true);
+  assert.equal(player.danoComandante.b, 2);
+  assert.equal(adjustCommanderDamage(player, 'b', -1, playerIds), true);
+  assert.equal(player.danoComandante.b, 1);
+  assert.equal(adjustCommanderDamage(player, 'a', 1, playerIds), false);
+  assert.equal(adjustCommanderDamage(player, 'ghost', 1, playerIds), false);
+});
+
 test('elimination validation rejects invalid reports', () => {
   const room = {
     papeisDesignados: [
@@ -156,8 +192,8 @@ test('lobby payload exposes stable player ids but hides socket ids', () => {
     resultado: null,
     coresMagicWar: MAGIC_WAR_COLORS,
     jogadores: [
-      { id: 'player-host', nome: 'Host', connected: true, vivo: true, cor: { id: 'red', nome: 'Vermelho', hex: '#df4c4c' } },
-      { id: 'player-2', nome: 'Guest', connected: false, vivo: false, cor: null },
+      { id: 'player-host', nome: 'Host', connected: true, vivo: true, vida: 40, danoComandante: {}, cor: { id: 'red', nome: 'Vermelho', hex: '#df4c4c' } },
+      { id: 'player-2', nome: 'Guest', connected: false, vivo: false, vida: 40, danoComandante: {}, cor: null },
     ],
   });
 });

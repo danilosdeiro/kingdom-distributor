@@ -7,6 +7,9 @@ const path = require('path');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const {
+  DEFAULT_LIFE,
+  adjustCommanderDamage,
+  adjustPlayerLife,
   MAX_PLAYERS,
   canStartGame,
   createMagicWarAssignments,
@@ -15,6 +18,7 @@ const {
   getObjective,
   getRoleLabel,
   getRoles,
+  initializeCombatState,
   normalizePlayerId,
   normalizePlayerName,
   normalizeRole,
@@ -265,7 +269,7 @@ io.on('connection', (socket) => {
     const codigoSala = generateRoomCode(roomExists);
     saloes[codigoSala] = {
       hostId: jogadorId,
-      jogadores: [{ id: jogadorId, socketId: socket.id, nome: nomeLimpo, connected: true }],
+      jogadores: [{ id: jogadorId, socketId: socket.id, nome: nomeLimpo, connected: true, vida: DEFAULT_LIFE, danoComandante: {} }],
       modoDeJogo: 'aleatorio',
       status: 'lobby',
       resultado: null,
@@ -336,7 +340,7 @@ io.on('connection', (socket) => {
         return socket.emit('erro', { mensagem: `A sala '${codigoSala}' esta cheia.` });
       }
 
-      sala.jogadores.push({ id: jogadorId, socketId: socket.id, nome: nomeLimpo, connected: true });
+      sala.jogadores.push({ id: jogadorId, socketId: socket.id, nome: nomeLimpo, connected: true, vida: DEFAULT_LIFE, danoComandante: {} });
     }
 
     const assignedRole = updateAssignedRoleSocketId(sala, jogadorId, socket.id);
@@ -443,6 +447,7 @@ io.on('connection', (socket) => {
     sala.historicoMortes = [];
     sala.status = 'em_jogo';
     sala.resultado = null;
+    initializeCombatState(sala);
 
     if (sala.modoDeJogo === 'magic-war') {
       sala.papeisDesignados = createMagicWarAssignments(sala.jogadores);
@@ -466,6 +471,44 @@ io.on('connection', (socket) => {
     sala.papeisDesignados.forEach((jogador) => {
       io.to(jogador.socketId).emit('seuPapel', getAssignedRolePayload(jogador));
     });
+  });
+
+  socket.on('alterarVida', ({ codigo, delta }) => {
+    const codigoSala = normalizeRoomCode(codigo);
+    const sala = saloes[codigoSala];
+    const jogador = sala?.jogadores.find((player) => player.socketId === socket.id);
+    const papel = sala?.papeisDesignados?.find((player) => player.id === jogador?.id);
+
+    if (!sala || sala.status !== 'em_jogo' || !jogador || papel?.vivo === false) {
+      return socket.emit('erro', { mensagem: 'Nao e possivel alterar a vida agora.' });
+    }
+
+    if (!adjustPlayerLife(jogador, Number(delta))) {
+      return socket.emit('erro', { mensagem: 'Alteracao de vida invalida.' });
+    }
+
+    persistRoom(sala);
+    emitLobby(codigoSala, sala);
+  });
+
+  socket.on('alterarDanoComandante', ({ codigo, comandanteId, delta }) => {
+    const codigoSala = normalizeRoomCode(codigo);
+    const sala = saloes[codigoSala];
+    const jogador = sala?.jogadores.find((player) => player.socketId === socket.id);
+    const papel = sala?.papeisDesignados?.find((player) => player.id === jogador?.id);
+    const jogadoresDaPartida = new Set((sala?.papeisDesignados || []).map((player) => player.id));
+
+    if (!sala || sala.status !== 'em_jogo' || !jogador || papel?.vivo === false) {
+      return socket.emit('erro', { mensagem: 'Nao e possivel alterar o dano de comandante agora.' });
+    }
+
+    const comandanteIdLimpo = normalizePlayerId(comandanteId);
+    if (!adjustCommanderDamage(jogador, comandanteIdLimpo, Number(delta), jogadoresDaPartida)) {
+      return socket.emit('erro', { mensagem: 'Alteracao de dano de comandante invalida.' });
+    }
+
+    persistRoom(sala);
+    emitLobby(codigoSala, sala);
   });
 
   socket.on('jogadorEliminado', ({ codigo, vitimaPlayerId, assassinoId, assassinoNome }) => {
