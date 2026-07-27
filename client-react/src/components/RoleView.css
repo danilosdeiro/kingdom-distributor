@@ -121,8 +121,9 @@
 .life-side {
   position: relative;
   border: 0;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 2rem;
+  background: #686b70;
+  color: #f7f7f8;
+  font-size: 3rem;
   font-weight: 800;
   cursor: pointer;
   touch-action: manipulation;
@@ -140,15 +141,11 @@
 }
 
 .life-minus {
-  background: #762b32;
+  border-right: 1px solid rgba(255, 255, 255, 0.24);
 }
 
 .life-minus span {
   left: 24px;
-}
-
-.life-plus {
-  background: #276441;
 }
 
 .life-plus span {
