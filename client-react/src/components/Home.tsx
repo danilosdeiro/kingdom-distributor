@@ -4,6 +4,7 @@ import { socket } from '../services/socket';
 import { gameState } from '../services/gameState';
 import { getPlayerId } from '../services/playerIdentity';
 import { clearRoomSession } from '../services/roomSession';
+import { getRoomRecoveryToken } from '../services/roomRecovery';
 import { toast } from 'react-hot-toast';
 import './Home.css';
 
@@ -97,7 +98,12 @@ export function Home() {
     if (codigo && nomeSalvo) {
       setCodigoSala(codigo);
       setNome(nomeSalvo);
-      socket.emit('entrarSala', { codigo, nome: nomeSalvo, playerId: getPlayerId() });
+      socket.emit('entrarSala', {
+        codigo,
+        nome: nomeSalvo,
+        playerId: getPlayerId(),
+        recoveryToken: getRoomRecoveryToken(codigo),
+      });
     }
   };
 

@@ -7,6 +7,10 @@ const path = require('path');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const {
+  createRoomRecoveryToken,
+  recoverRoomFromToken,
+} = require('./roomRecovery');
+const {
   DEFAULT_LIFE,
   addPartnerCommander,
   adjustCommanderDamage,
@@ -43,9 +47,15 @@ const PORT = process.env.PORT || 3000;
 const RECONNECT_GRACE_MS = Number(process.env.RECONNECT_GRACE_MS || 120000);
 const ROOM_STATE_FILE = process.env.ROOM_STATE_FILE || path.join(__dirname, 'data', 'rooms.json');
 const ROOM_STATE_TTL_MS = Number(process.env.ROOM_STATE_TTL_MS || 12 * 60 * 60 * 1000);
+const SERVER_STARTED_AT = Date.now();
 
 app.use(cors({ origin: CLIENT_ORIGINS }));
-app.get('/health', (_req, res) => res.json({ ok: true }));
+app.get('/health', (_req, res) => res.json({
+  ok: true,
+  roomRecovery: true,
+  uptimeSeconds: Math.floor((Date.now() - SERVER_STARTED_AT) / 1000),
+  activeRooms: Object.keys(saloes).length,
+}));
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -62,6 +72,48 @@ function serializeRoom(sala) {
     ...sala,
     disconnectTimers: {},
   };
+}
+
+function getRoomRecoveryToken(codigo, sala) {
+  return createRoomRecoveryToken(codigo, serializeRoom(sala), {
+    ttlMs: ROOM_STATE_TTL_MS,
+  });
+}
+
+function emitRoomRecovery(target, codigo, sala) {
+  target.emit('salvarRecuperacaoSala', {
+    codigo,
+    token: getRoomRecoveryToken(codigo, sala),
+  });
+}
+
+function getRecoveredRoom(codigo, recoveryToken) {
+  const snapshot = recoverRoomFromToken(codigo, recoveryToken);
+  if (!snapshot) return null;
+
+  return restoreRoom(snapshot);
+}
+
+function preserveRuntimeConnections(recoveredRoom, currentRoom) {
+  currentRoom?.jogadores?.forEach((currentPlayer) => {
+    if (!currentPlayer.connected || !currentPlayer.socketId) return;
+
+    const recoveredPlayer = recoveredRoom.jogadores.find((player) => player.id === currentPlayer.id);
+    if (!recoveredPlayer) return;
+    recoveredPlayer.connected = true;
+    recoveredPlayer.socketId = currentPlayer.socketId;
+
+    const recoveredRole = recoveredRoom.papeisDesignados?.find((role) => role.id === currentPlayer.id);
+    if (recoveredRole) recoveredRole.socketId = currentPlayer.socketId;
+  });
+}
+
+function installRecoveredRoom(codigo, recoveredRoom, currentRoom = null) {
+  preserveRuntimeConnections(recoveredRoom, currentRoom);
+  saloes[codigo] = recoveredRoom;
+  saveRooms();
+  console.log(`Sala ${codigo} restaurada por token de recuperacao.`);
+  return recoveredRoom;
 }
 
 function restoreRoom(sala) {
@@ -117,8 +169,13 @@ function touchRoom(sala) {
   sala.updatedAt = Date.now();
 }
 
-function persistRoom(sala) {
+function persistRoom(sala, { stateChanged = true } = {}) {
   touchRoom(sala);
+  if (stateChanged) {
+    sala.recoveryRevision = Number.isInteger(sala.recoveryRevision)
+      ? sala.recoveryRevision + 1
+      : 1;
+  }
   saveRooms();
 }
 
@@ -133,6 +190,7 @@ function roomExists(codigo) {
 
 function emitLobby(codigo, sala) {
   io.to(codigo).emit('atualizarLobby', getLobbyPayload(sala));
+  emitRoomRecovery(io.to(codigo), codigo, sala);
 }
 
 function ensureRoomHasHost(sala) {
@@ -269,6 +327,7 @@ function finishGame(codigo, sala, vencedor, mensagem) {
   sala.status = 'finalizado';
   sala.resultado = resultado;
   persistRoom(sala);
+  emitRoomRecovery(io.to(codigo), codigo, sala);
   io.to(codigo).emit('fimDeJogo', resultado);
   return resultado;
 }
@@ -289,20 +348,39 @@ io.on('connection', (socket) => {
       status: 'lobby',
       resultado: null,
       disconnectTimers: {},
+      recoveryRevision: 1,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
 
     socket.join(codigoSala);
     saveRooms();
+    emitRoomRecovery(socket, codigoSala, saloes[codigoSala]);
     socket.emit('salaCriada', { codigo: codigoSala, jogadores: saloes[codigoSala].jogadores });
   });
 
-  socket.on('entrarSala', ({ codigo, nome, playerId }) => {
+  socket.on('entrarSala', ({ codigo, nome, playerId, recoveryToken }) => {
     const codigoSala = normalizeRoomCode(codigo);
     const nomeLimpo = normalizePlayerName(nome);
     const jogadorId = normalizePlayerId(playerId) || socket.id;
-    const sala = saloes[codigoSala];
+    let sala = saloes[codigoSala];
+    let salaFoiRecuperada = false;
+    const recoveredRoom = recoveryToken
+      ? getRecoveredRoom(codigoSala, recoveryToken)
+      : null;
+
+    if (!sala && recoveredRoom) {
+      sala = installRecoveredRoom(codigoSala, recoveredRoom);
+      salaFoiRecuperada = Boolean(sala);
+    } else if (
+      sala
+      && recoveredRoom
+      && recoveredRoom.createdAt === sala.createdAt
+      && (recoveredRoom.recoveryRevision || 0) > (sala.recoveryRevision || 0)
+    ) {
+      sala = installRecoveredRoom(codigoSala, recoveredRoom, sala);
+      salaFoiRecuperada = true;
+    }
 
     if (!sala) {
       return socket.emit('erro', { mensagem: 'Sala nao encontrada.' });
@@ -328,8 +406,11 @@ io.on('connection', (socket) => {
       return socket.emit('erro', { mensagem: 'A partida ja comecou. Apenas jogadores da sala podem reconectar.' });
     }
 
+    let roomStateChanged = false;
+
     if (jogadorIndex > -1) {
       const oldId = sala.jogadores[jogadorIndex].id;
+      const oldName = sala.jogadores[jogadorIndex].nome;
       clearDisconnectTimer(sala, oldId);
       sala.jogadores[jogadorIndex] = {
         ...sala.jogadores[jogadorIndex],
@@ -338,6 +419,7 @@ io.on('connection', (socket) => {
         nome: nomeLimpo,
         connected: true,
       };
+      roomStateChanged = oldId !== jogadorId || oldName !== nomeLimpo;
 
       if (sala.hostId === oldId) {
         sala.hostId = jogadorId;
@@ -371,13 +453,19 @@ io.on('connection', (socket) => {
       }
 
       sala.jogadores.push({ id: jogadorId, socketId: socket.id, nome: nomeLimpo, connected: true, vida: DEFAULT_LIFE, danoComandante: {} });
+      roomStateChanged = true;
     }
 
     const assignedRole = updateAssignedRoleSocketId(sala, jogadorId, socket.id);
     socket.join(codigoSala);
-    persistRoom(sala);
+    persistRoom(sala, { stateChanged: roomStateChanged });
     emitLobby(codigoSala, sala);
     socket.emit('entradaComSucesso');
+    if (salaFoiRecuperada) {
+      socket.emit('salaRecuperada', {
+        mensagem: 'A partida foi recuperada apos o servidor reiniciar.',
+      });
+    }
 
     if (sala.status === 'em_jogo') {
       emitAssignedRole(socket, assignedRole);
@@ -707,7 +795,7 @@ io.on('connection', (socket) => {
     const { codigo, sala, jogador } = found;
     jogador.connected = false;
     schedulePlayerRemoval(codigo, sala, jogador);
-    persistRoom(sala);
+    persistRoom(sala, { stateChanged: false });
     emitLobby(codigo, sala);
   });
 });

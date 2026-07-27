@@ -1,11 +1,13 @@
 // src/App.tsx
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { Footer } from './components/Footer';
 import { SideMenu } from './components/SideMenu';
-import { Toaster } from 'react-hot-toast';
+import { toast, Toaster } from 'react-hot-toast';
+import { socket } from './services/socket';
+import { saveRoomRecovery } from './services/roomRecovery';
 import './App.css';
 
 function App() {
@@ -15,6 +17,23 @@ function App() {
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
+
+  useEffect(() => {
+    const handleSalvarRecuperacao = (data: { codigo: string; token: string }) => {
+      saveRoomRecovery(data);
+    };
+    const handleSalaRecuperada = ({ mensagem }: { mensagem: string }) => {
+      toast.success(mensagem, { duration: 5000 });
+    };
+
+    socket.on('salvarRecuperacaoSala', handleSalvarRecuperacao);
+    socket.on('salaRecuperada', handleSalaRecuperada);
+
+    return () => {
+      socket.off('salvarRecuperacaoSala', handleSalvarRecuperacao);
+      socket.off('salaRecuperada', handleSalaRecuperada);
+    };
+  }, []);
 
   return (
     // Adiciona uma classe ao layout quando o menu está aberto

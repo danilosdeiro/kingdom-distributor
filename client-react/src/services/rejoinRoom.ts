@@ -1,5 +1,6 @@
 import { socket } from './socket';
 import { getPlayerId } from './playerIdentity';
+import { getRoomRecoveryToken } from './roomRecovery';
 
 export function rejoinSavedRoom() {
   const codigo = localStorage.getItem('salaAtual');
@@ -11,6 +12,7 @@ export function rejoinSavedRoom() {
     codigo,
     nome,
     playerId: getPlayerId(),
+    recoveryToken: getRoomRecoveryToken(codigo),
   });
 
   return true;
