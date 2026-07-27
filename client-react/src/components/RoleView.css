@@ -76,6 +76,34 @@
   font-size: 1.1rem;
 }
 
+.life-counter-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  min-width: 0;
+}
+
+.undo-combat-button {
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid #777b82;
+  border-radius: 6px;
+  background: #3a3c40;
+  color: #f0f0f1;
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.undo-combat-button:disabled {
+  border-color: #44464a;
+  background: #292a2d;
+  color: #6f7176;
+  cursor: not-allowed;
+}
+
 .commander-damage-button {
   display: inline-flex;
   align-items: center;
@@ -732,6 +760,65 @@
   cursor: not-allowed;
 }
 
+.elimination-alert {
+  text-align: center;
+}
+
+.elimination-alert-kicker {
+  display: block;
+  margin-bottom: 8px;
+  color: #ff858b;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.elimination-alert h2 {
+  margin: 0;
+  color: #f4f4f5;
+  font-family: 'Cinzel', serif;
+  font-size: 1.35rem;
+}
+
+.elimination-alert p {
+  margin: 12px 0 18px;
+  color: #aaaab0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.elimination-alert-actions {
+  display: grid;
+  gap: 9px;
+}
+
+.elimination-alert-actions button {
+  min-height: 50px;
+  padding: 12px 14px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.confirm-elimination-alert {
+  border: 1px solid #cf454d;
+  background: #a92e35;
+  color: #fff;
+}
+
+.undo-elimination-alert {
+  border: 1px solid #8b8f96;
+  background: #55585e;
+  color: #fff;
+}
+
+.dismiss-elimination-alert {
+  border: 1px solid #666970;
+  background: #33353a;
+  color: #ededee;
+}
+
 
 @media (max-width: 600px) {
   .role-container {
@@ -748,6 +835,17 @@
     margin-bottom: 18px;
   }
 
+  .life-counter-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .life-counter-actions {
+    display: grid;
+    grid-template-columns: 86px minmax(0, 1fr);
+  }
+
   .life-counter-control {
     min-height: 150px;
   }
@@ -757,7 +855,8 @@
   }
 
   .commander-damage-button {
-    max-width: 170px;
+    justify-content: center;
+    max-width: none;
   }
 
   .role-card p {

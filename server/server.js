@@ -29,10 +29,12 @@ const {
   normalizePlayerName,
   normalizeRole,
   normalizeRoomCode,
+  recordCombatChange,
   resetRoomForLobby,
   shuffle,
   setMagicWarColor,
   setMagicWarSurvivalObjective,
+  undoLastCombatChange,
   validateElimination,
 } = require('./gameRules');
 
@@ -598,8 +600,18 @@ io.on('connection', (socket) => {
       return socket.emit('erro', { mensagem: 'Nao e possivel alterar a vida agora.' });
     }
 
+    const beforeLife = Number.isInteger(jogador.vida) ? jogador.vida : DEFAULT_LIFE;
     if (!adjustPlayerLife(jogador, Number(delta))) {
       return socket.emit('erro', { mensagem: 'Alteracao de vida invalida.' });
+    }
+
+    if (jogador.vida !== beforeLife) {
+      recordCombatChange(sala, {
+        type: 'life',
+        playerId: jogador.id,
+        beforeLife,
+        afterLife: jogador.vida,
+      });
     }
 
     persistRoom(sala);
@@ -617,12 +629,53 @@ io.on('connection', (socket) => {
     }
 
     const comandanteIdLimpo = String(comandanteId || '').trim().slice(0, 100);
+    const beforeLife = Number.isInteger(jogador.vida) ? jogador.vida : DEFAULT_LIFE;
+    const beforeDamage = Number.isInteger(jogador.danoComandante?.[comandanteIdLimpo])
+      ? jogador.danoComandante[comandanteIdLimpo]
+      : 0;
     if (!adjustCommanderDamage(jogador, comandanteIdLimpo, Number(delta), sala.jogadores)) {
       return socket.emit('erro', { mensagem: 'Alteracao de dano de comandante invalida.' });
     }
 
+    const afterDamage = jogador.danoComandante[comandanteIdLimpo];
+    if (jogador.vida !== beforeLife || afterDamage !== beforeDamage) {
+      recordCombatChange(sala, {
+        type: 'commander',
+        playerId: jogador.id,
+        commanderId: comandanteIdLimpo,
+        beforeLife,
+        afterLife: jogador.vida,
+        beforeDamage,
+        afterDamage,
+      });
+    }
+
     persistRoom(sala);
     emitLobby(codigoSala, sala);
+  });
+
+  socket.on('desfazerUltimaAlteracaoCombate', ({ codigo }) => {
+    const codigoSala = normalizeRoomCode(codigo);
+    const sala = saloes[codigoSala];
+    const jogador = sala?.jogadores.find((player) => player.socketId === socket.id);
+    const papel = sala?.papeisDesignados?.find((player) => player.id === jogador?.id);
+
+    if (!sala || sala.status !== 'em_jogo' || !jogador || papel?.vivo === false) {
+      return socket.emit('erro', { mensagem: 'Nao e possivel desfazer uma alteracao agora.' });
+    }
+
+    const change = undoLastCombatChange(sala, jogador.id);
+    if (!change) {
+      return socket.emit('erro', { mensagem: 'Nao ha alteracoes para desfazer.' });
+    }
+
+    persistRoom(sala);
+    emitLobby(codigoSala, sala);
+    socket.emit('alteracaoCombateDesfeita', {
+      mensagem: change.type === 'commander'
+        ? 'Dano de comandante desfeito.'
+        : 'Alteracao de vida desfeita.',
+    });
   });
 
   socket.on('adicionarSegundoComandante', ({ codigo }) => {
