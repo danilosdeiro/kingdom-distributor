@@ -131,6 +131,36 @@ test('an active match recovers after the server and ephemeral file are lost', { 
     await Promise.all([lifeAt39, recoveryAfterLife]);
     assert.ok(latestRecoveryToken);
 
+    const tokenAfterLifeChange = latestRecoveryToken;
+    const recoveryAfterUndo = waitForEvent(
+      sockets[0],
+      'salvarRecuperacaoSala',
+      ({ token }) => token !== tokenAfterLifeChange
+    );
+    const lifeRestored = waitForEvent(
+      sockets[0],
+      'atualizarLobby',
+      (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === 40
+    );
+    const undoConfirmed = waitForEvent(sockets[0], 'alteracaoCombateDesfeita');
+    sockets[0].emit('desfazerUltimaAlteracaoCombate', { codigo });
+    const [restoredLobby] = await Promise.all([lifeRestored, recoveryAfterUndo, undoConfirmed]);
+    assert.equal(restoredLobby.jogadores.find((player) => player.id === ids[0]).canUndoCombat, false);
+
+    const tokenAfterUndo = latestRecoveryToken;
+    const recoveryAfterSecondLifeChange = waitForEvent(
+      sockets[0],
+      'salvarRecuperacaoSala',
+      ({ token }) => token !== tokenAfterUndo
+    );
+    const lifeBackAt39 = waitForEvent(
+      sockets[0],
+      'atualizarLobby',
+      (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === 39
+    );
+    sockets[0].emit('alterarVida', { codigo, delta: -1 });
+    await Promise.all([lifeBackAt39, recoveryAfterSecondLifeChange]);
+
     await stopServer(serverProcess);
     sockets.forEach((socket) => socket.disconnect());
     sockets = [];

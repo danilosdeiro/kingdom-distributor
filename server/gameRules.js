@@ -6,6 +6,7 @@ const MAX_PLAYERS = 7;
 const MAGIC_WAR_MIN_PLAYERS = 3;
 const DEFAULT_LIFE = 40;
 const COMMANDER_DAMAGE_LIMIT = 21;
+const MAX_COMBAT_HISTORY = 30;
 const PARTNER_COMMANDER_SUFFIX = ':partner';
 
 const MAGIC_WAR_COLORS = [
@@ -205,6 +206,7 @@ function initializeCombatState(room) {
     player.danoComandante = {};
     player.commanderCount = 1;
   });
+  room.combatHistory = [];
 }
 
 function adjustPlayerLife(player, delta) {
@@ -250,6 +252,40 @@ function addPartnerCommander(room, playerId) {
   return true;
 }
 
+function recordCombatChange(room, change) {
+  if (!room || !change?.playerId || !['life', 'commander'].includes(change.type)) return false;
+
+  room.combatHistory = Array.isArray(room.combatHistory) ? room.combatHistory : [];
+  room.combatHistory.push({
+    ...change,
+    createdAt: Date.now(),
+  });
+  if (room.combatHistory.length > MAX_COMBAT_HISTORY) {
+    room.combatHistory.splice(0, room.combatHistory.length - MAX_COMBAT_HISTORY);
+  }
+  return true;
+}
+
+function undoLastCombatChange(room, playerId) {
+  if (!room || !playerId || !Array.isArray(room.combatHistory)) return null;
+
+  const historyIndex = room.combatHistory.findLastIndex((change) => change.playerId === playerId);
+  if (historyIndex === -1) return null;
+
+  const change = room.combatHistory[historyIndex];
+  const player = room.jogadores.find((item) => item.id === playerId);
+  if (!player) return null;
+
+  player.vida = change.beforeLife;
+  if (change.type === 'commander') {
+    player.danoComandante = player.danoComandante || {};
+    player.danoComandante[change.commanderId] = change.beforeDamage;
+  }
+
+  room.combatHistory.splice(historyIndex, 1);
+  return change;
+}
+
 function resetRoomForLobby(room) {
   if (!room) return false;
 
@@ -275,6 +311,8 @@ function getLobbyPayload(room) {
       vida: Number.isInteger(player.vida) ? player.vida : DEFAULT_LIFE,
       danoComandante: player.danoComandante || {},
       commanderCount: player.commanderCount === 2 ? 2 : 1,
+      canUndoCombat: Array.isArray(room.combatHistory)
+        && room.combatHistory.some((change) => change.playerId === player.id),
       cor: room.modoDeJogo === 'magic-war'
         ? player.cor || assignedRolesByPlayerId.get(player.id)?.cor || null
         : null,
@@ -313,8 +351,10 @@ module.exports = {
   normalizeRole,
   normalizeRoomCode,
   resetRoomForLobby,
+  recordCombatChange,
   shuffle,
   setMagicWarColor,
   setMagicWarSurvivalObjective,
+  undoLastCombatChange,
   validateElimination,
 };

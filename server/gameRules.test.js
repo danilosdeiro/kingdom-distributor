@@ -17,10 +17,12 @@ const {
   normalizePlayerId,
   normalizePlayerName,
   normalizeRoomCode,
+  recordCombatChange,
   resetRoomForLobby,
   shuffle,
   setMagicWarColor,
   setMagicWarSurvivalObjective,
+  undoLastCombatChange,
   validateElimination,
 } = require('./gameRules');
 
@@ -148,6 +150,7 @@ test('combat state starts at 40 life and resets commander damage', () => {
     { id: 'a', vida: DEFAULT_LIFE, danoComandante: {}, commanderCount: 1 },
     { id: 'b', vida: DEFAULT_LIFE, danoComandante: {}, commanderCount: 1 },
   ]);
+  assert.deepEqual(room.combatHistory, []);
 });
 
 test('players can adjust only valid life and commander damage steps', () => {
@@ -173,6 +176,49 @@ test('players can adjust only valid life and commander damage steps', () => {
   assert.equal(adjustCommanderDamage(player, 'b:partner', 1, players), true);
   assert.equal(player.danoComandante['b:partner'], 1);
   assert.equal(player.vida, 36);
+});
+
+test('combat changes can be undone in order for each player', () => {
+  const room = {
+    jogadores: [
+      { id: 'a', vida: 38, danoComandante: { b: 1 } },
+      { id: 'b', vida: 39, danoComandante: {} },
+    ],
+    combatHistory: [],
+  };
+
+  recordCombatChange(room, {
+    type: 'life',
+    playerId: 'a',
+    beforeLife: 40,
+    afterLife: 39,
+  });
+  recordCombatChange(room, {
+    type: 'life',
+    playerId: 'b',
+    beforeLife: 40,
+    afterLife: 39,
+  });
+  recordCombatChange(room, {
+    type: 'commander',
+    playerId: 'a',
+    commanderId: 'b',
+    beforeLife: 39,
+    afterLife: 38,
+    beforeDamage: 0,
+    afterDamage: 1,
+  });
+
+  assert.equal(getLobbyPayload(room).jogadores[0].canUndoCombat, true);
+  assert.equal(undoLastCombatChange(room, 'a').type, 'commander');
+  assert.equal(room.jogadores[0].vida, 39);
+  assert.equal(room.jogadores[0].danoComandante.b, 0);
+
+  assert.equal(undoLastCombatChange(room, 'a').type, 'life');
+  assert.equal(room.jogadores[0].vida, 40);
+  assert.equal(getLobbyPayload(room).jogadores[0].canUndoCombat, false);
+  assert.equal(room.jogadores[1].vida, 39);
+  assert.equal(undoLastCombatChange(room, 'a'), null);
 });
 
 test('returning after a finished game resets the room for a new lobby', () => {
@@ -231,8 +277,8 @@ test('lobby payload exposes stable player ids but hides socket ids', () => {
     resultado: null,
     coresMagicWar: MAGIC_WAR_COLORS,
     jogadores: [
-      { id: 'player-host', nome: 'Host', connected: true, vivo: true, vida: 40, danoComandante: {}, commanderCount: 1, cor: { id: 'red', nome: 'Vermelho', hex: '#df4c4c' } },
-      { id: 'player-2', nome: 'Guest', connected: false, vivo: false, vida: 40, danoComandante: {}, commanderCount: 1, cor: null },
+      { id: 'player-host', nome: 'Host', connected: true, vivo: true, vida: 40, danoComandante: {}, commanderCount: 1, canUndoCombat: false, cor: { id: 'red', nome: 'Vermelho', hex: '#df4c4c' } },
+      { id: 'player-2', nome: 'Guest', connected: false, vivo: false, vida: 40, danoComandante: {}, commanderCount: 1, canUndoCombat: false, cor: null },
     ],
   });
 });

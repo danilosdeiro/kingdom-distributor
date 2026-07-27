@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gameState } from '../services/gameState';
 import { socket } from '../services/socket';
@@ -17,6 +17,7 @@ interface Jogador {
   vida?: number;
   danoComandante?: Record<string, number>;
   commanderCount?: 1 | 2;
+  canUndoCombat?: boolean;
 }
 
 interface CorMagicWar {
@@ -53,6 +54,18 @@ interface GameResult {
   revelacao?: RevelacaoPapel[];
 }
 
+interface CombatThresholds {
+  life: number;
+  commanderDamage: number;
+}
+
+function getCombatThresholds(player: Jogador): CombatThresholds {
+  return {
+    life: player.vida ?? 40,
+    commanderDamage: Math.max(0, ...Object.values(player.danoComandante || {})),
+  };
+}
+
 const papelStorage = {
   get: () => sessionStorage.getItem('ultimoPapel'),
   set: (papelInfo: PapelInfo) => sessionStorage.setItem('ultimoPapel', JSON.stringify(papelInfo)),
@@ -74,6 +87,8 @@ export function RoleView() {
   const [modalRegistroHostAberto, setModalRegistroHostAberto] = useState(false);
   const [vitimaSelecionadaId, setVitimaSelecionadaId] = useState('');
   const [eliminadorSelecionadoId, setEliminadorSelecionadoId] = useState('');
+  const [alertaEliminacao, setAlertaEliminacao] = useState<string | null>(null);
+  const previousCombatThresholds = useRef<CombatThresholds | null>(null);
 
   const navigate = useNavigate();
 
@@ -83,7 +98,9 @@ export function RoleView() {
       try {
         const jogadores = JSON.parse(jogadoresSalvos) as Jogador[];
         setJogadoresVivos(jogadores);
-        setEstouMorto(jogadores.some((jogador) => jogador.id === getPlayerId() && jogador.vivo === false));
+        const jogadorAtual = jogadores.find((jogador) => jogador.id === getPlayerId());
+        setEstouMorto(jogadorAtual?.vivo === false);
+        if (jogadorAtual) previousCombatThresholds.current = getCombatThresholds(jogadorAtual);
       } catch {
         setJogadoresVivos([]);
       }
@@ -141,8 +158,23 @@ export function RoleView() {
       setJogadoresVivos(dados.jogadores);
       if (dados.hostId) setHostId(dados.hostId);
       localStorage.setItem('jogadoresDaSala', JSON.stringify(dados.jogadores));
-      if (dados.jogadores.some((jogador) => jogador.id === getPlayerId() && jogador.vivo === false)) {
+      const jogadorAtual = dados.jogadores.find((jogador) => jogador.id === getPlayerId());
+      if (jogadorAtual?.vivo === false) {
         setEstouMorto(true);
+      }
+      if (jogadorAtual) {
+        const currentThresholds = getCombatThresholds(jogadorAtual);
+        const previousThresholds = previousCombatThresholds.current;
+
+        if (jogadorAtual.vivo !== false && previousThresholds) {
+          if (previousThresholds.commanderDamage < 21 && currentThresholds.commanderDamage >= 21) {
+            setAlertaEliminacao('Você chegou a 21 de dano de comandante.');
+            setModalDanoComandanteAberto(false);
+          } else if (previousThresholds.life > 0 && currentThresholds.life <= 0) {
+            setAlertaEliminacao('Sua vida chegou a zero.');
+          }
+        }
+        previousCombatThresholds.current = currentThresholds;
       }
       if (dados.status === 'finalizado' && dados.resultado) {
         setResultado(dados.resultado);
@@ -158,6 +190,10 @@ export function RoleView() {
       rejoinSavedRoom();
     };
 
+    const handleAlteracaoCombateDesfeita = ({ mensagem }: { mensagem: string }) => {
+      toast.success(mensagem);
+    };
+
     socket.on('morteConfirmada', handleMorteConfirmada);
     socket.on('mensagemSistema', handleMensagemSistema);
     socket.on('fimDeJogo', handleFimDeJogo);
@@ -166,6 +202,7 @@ export function RoleView() {
     socket.on('atualizarLobby', handleAtualizarLobby);
     socket.on('erro', handleErro);
     socket.on('connect', handleConnect);
+    socket.on('alteracaoCombateDesfeita', handleAlteracaoCombateDesfeita);
 
     handleConnect();
 
@@ -178,6 +215,7 @@ export function RoleView() {
       socket.off('atualizarLobby', handleAtualizarLobby);
       socket.off('erro', handleErro);
       socket.off('connect', handleConnect);
+      socket.off('alteracaoCombateDesfeita', handleAlteracaoCombateDesfeita);
     };
   }, [navigate]);
 
@@ -251,6 +289,22 @@ export function RoleView() {
     if (codigoSala) socket.emit('alterarDanoComandante', { codigo: codigoSala, comandanteId, delta });
   };
 
+  const desfazerUltimaAlteracaoCombate = () => {
+    const codigoSala = localStorage.getItem('salaAtual');
+    if (codigoSala) socket.emit('desfazerUltimaAlteracaoCombate', { codigo: codigoSala });
+  };
+
+  const abrirRegistroEliminacaoDoAlerta = () => {
+    setAlertaEliminacao(null);
+    setModalDanoComandanteAberto(false);
+    setModalMorteAberto(true);
+  };
+
+  const desfazerDoAlerta = () => {
+    setAlertaEliminacao(null);
+    desfazerUltimaAlteracaoCombate();
+  };
+
   const adicionarSegundoComandante = () => {
     const codigoSala = localStorage.getItem('salaAtual');
     if (codigoSala) socket.emit('adicionarSegundoComandante', { codigo: codigoSala });
@@ -276,10 +330,20 @@ export function RoleView() {
       <section className="life-counter-panel" aria-label="Seu contador de vida">
         <div className="life-counter-header">
           <h2>Sua vida</h2>
-          <button type="button" className="commander-damage-button" onClick={() => setModalDanoComandanteAberto(true)}>
-            Dano de comandante
-            {maiorDanoComandante > 0 && <span className={maiorDanoComandante >= 21 ? 'is-lethal' : ''}>{maiorDanoComandante}</span>}
-          </button>
+          <div className="life-counter-actions">
+            <button
+              type="button"
+              className="undo-combat-button"
+              onClick={desfazerUltimaAlteracaoCombate}
+              disabled={!jogadorAtual.canUndoCombat}
+            >
+              Desfazer
+            </button>
+            <button type="button" className="commander-damage-button" onClick={() => setModalDanoComandanteAberto(true)}>
+              Dano de comandante
+              {maiorDanoComandante > 0 && <span className={maiorDanoComandante >= 21 ? 'is-lethal' : ''}>{maiorDanoComandante}</span>}
+            </button>
+          </div>
         </div>
         <div className="life-counter-control">
           <button type="button" className="life-side life-minus" onClick={() => alterarVida(-1)} aria-label="Diminuir uma vida">
@@ -532,6 +596,27 @@ export function RoleView() {
             Sair do Jogo
           </button>
         </div>
+
+        {alertaEliminacao && !estouMorto && (
+          <div className="commander-modal-backdrop" role="presentation">
+            <div className="commander-modal elimination-alert" role="alertdialog" aria-modal="true" aria-labelledby="elimination-alert-title">
+              <span className="elimination-alert-kicker">Possível eliminação</span>
+              <h2 id="elimination-alert-title">{alertaEliminacao}</h2>
+              <p>Confirme apenas se nenhum efeito estiver mantendo você na partida.</p>
+              <div className="elimination-alert-actions">
+                <button type="button" className="undo-elimination-alert" onClick={desfazerDoAlerta}>
+                  Desfazer última alteração
+                </button>
+                <button type="button" className="confirm-elimination-alert" onClick={abrirRegistroEliminacaoDoAlerta}>
+                  Registrar eliminação
+                </button>
+                <button type="button" className="dismiss-elimination-alert" onClick={() => setAlertaEliminacao(null)}>
+                  Continuar jogando
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {modalMorteAberto && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
