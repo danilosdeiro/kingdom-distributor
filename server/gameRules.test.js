@@ -42,6 +42,17 @@ test('generate room code avoids existing rooms', () => {
   assert.equal(calls, 1);
 });
 
+test('Magic War black color uses true black with readable text', () => {
+  const black = MAGIC_WAR_COLORS.find((color) => color.id === 'black');
+
+  assert.deepEqual(black, {
+    id: 'black',
+    nome: 'Preto',
+    hex: '#000000',
+    textColor: '#ffffff',
+  });
+});
+
 test('shuffle keeps the same items', () => {
   const randomInt = () => 0;
   const shuffled = shuffle(['a', 'b', 'c'], randomInt);

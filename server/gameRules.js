@@ -11,7 +11,7 @@ const PARTNER_COMMANDER_SUFFIX = ':partner';
 const MAGIC_WAR_COLORS = [
   { id: 'white', nome: 'Branco', hex: '#f4efd8', textColor: '#171717' },
   { id: 'blue', nome: 'Azul', hex: '#4b9fe8', textColor: '#ffffff' },
-  { id: 'black', nome: 'Preto', hex: '#34313a', textColor: '#ffffff' },
+  { id: 'black', nome: 'Preto', hex: '#000000', textColor: '#ffffff' },
   { id: 'red', nome: 'Vermelho', hex: '#df4c4c', textColor: '#ffffff' },
   { id: 'green', nome: 'Verde', hex: '#48a868', textColor: '#ffffff' },
   { id: 'colorless', nome: 'Incolor', hex: '#aeb4b8', textColor: '#171717' },
