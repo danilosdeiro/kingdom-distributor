@@ -151,6 +151,7 @@ test('combat state starts at 40 life and resets commander damage', () => {
     { id: 'b', vida: DEFAULT_LIFE, danoComandante: {}, commanderCount: 1 },
   ]);
   assert.deepEqual(room.combatHistory, []);
+  assert.equal(room.combatSequence, 0);
 });
 
 test('players can adjust only valid life and commander damage steps', () => {
@@ -181,8 +182,8 @@ test('players can adjust only valid life and commander damage steps', () => {
 test('combat changes can be undone in order for each player', () => {
   const room = {
     jogadores: [
-      { id: 'a', vida: 38, danoComandante: { b: 1 } },
-      { id: 'b', vida: 39, danoComandante: {} },
+      { id: 'a', nome: 'Ana', vida: 38, danoComandante: { b: 1 } },
+      { id: 'b', nome: 'Beto', vida: 39, danoComandante: {} },
     ],
     combatHistory: [],
   };
@@ -210,6 +211,19 @@ test('combat changes can be undone in order for each player', () => {
   });
 
   assert.equal(getLobbyPayload(room).jogadores[0].canUndoCombat, true);
+  assert.deepEqual(
+    getLobbyPayload(room).combatLog.map(({ type, playerName, delta, commanderName }) => ({
+      type,
+      playerName,
+      delta,
+      commanderName,
+    })),
+    [
+      { type: 'commander', playerName: 'Ana', delta: 1, commanderName: 'Beto' },
+      { type: 'life', playerName: 'Beto', delta: -1, commanderName: undefined },
+      { type: 'life', playerName: 'Ana', delta: -1, commanderName: undefined },
+    ]
+  );
   assert.equal(undoLastCombatChange(room, 'a').type, 'commander');
   assert.equal(room.jogadores[0].vida, 39);
   assert.equal(room.jogadores[0].danoComandante.b, 0);
@@ -276,6 +290,7 @@ test('lobby payload exposes stable player ids but hides socket ids', () => {
     status: 'em_jogo',
     resultado: null,
     coresMagicWar: MAGIC_WAR_COLORS,
+    combatLog: [],
     jogadores: [
       { id: 'player-host', nome: 'Host', connected: true, vivo: true, vida: 40, danoComandante: {}, commanderCount: 1, canUndoCombat: false, cor: { id: 'red', nome: 'Vermelho', hex: '#df4c4c' } },
       { id: 'player-2', nome: 'Guest', connected: false, vivo: false, vida: 40, danoComandante: {}, commanderCount: 1, canUndoCombat: false, cor: null },

@@ -7,6 +7,7 @@ const MAGIC_WAR_MIN_PLAYERS = 3;
 const DEFAULT_LIFE = 40;
 const COMMANDER_DAMAGE_LIMIT = 21;
 const MAX_COMBAT_HISTORY = 30;
+const MAX_PUBLIC_COMBAT_LOG = 8;
 const PARTNER_COMMANDER_SUFFIX = ':partner';
 
 const MAGIC_WAR_COLORS = [
@@ -207,6 +208,7 @@ function initializeCombatState(room) {
     player.commanderCount = 1;
   });
   room.combatHistory = [];
+  room.combatSequence = 0;
 }
 
 function adjustPlayerLife(player, delta) {
@@ -256,8 +258,10 @@ function recordCombatChange(room, change) {
   if (!room || !change?.playerId || !['life', 'commander'].includes(change.type)) return false;
 
   room.combatHistory = Array.isArray(room.combatHistory) ? room.combatHistory : [];
+  room.combatSequence = Number.isInteger(room.combatSequence) ? room.combatSequence + 1 : 1;
   room.combatHistory.push({
     ...change,
+    id: String(room.combatSequence),
     createdAt: Date.now(),
   });
   if (room.combatHistory.length > MAX_COMBAT_HISTORY) {
@@ -297,6 +301,42 @@ function resetRoomForLobby(room) {
   return true;
 }
 
+function getPublicCombatLog(room) {
+  if (!Array.isArray(room.combatHistory)) return [];
+
+  const playersById = new Map(room.jogadores.map((player) => [player.id, player]));
+  return room.combatHistory.slice(-MAX_PUBLIC_COMBAT_LOG).map((change, index) => {
+    const player = playersById.get(change.playerId);
+    const baseEntry = {
+      id: change.id || `${change.createdAt}-${index}-${change.playerId}`,
+      type: change.type,
+      playerId: change.playerId,
+      playerName: player?.nome || 'Jogador',
+      lifeAfter: change.afterLife,
+      createdAt: change.createdAt,
+    };
+
+    if (change.type === 'life') {
+      return {
+        ...baseEntry,
+        delta: change.afterLife - change.beforeLife,
+      };
+    }
+
+    const commanderOwnerId = getCommanderOwnerId(change.commanderId);
+    const commanderOwner = playersById.get(commanderOwnerId);
+    const isPartner = change.commanderId.endsWith(PARTNER_COMMANDER_SUFFIX);
+    return {
+      ...baseEntry,
+      delta: change.afterDamage - change.beforeDamage,
+      commanderName: commanderOwner
+        ? `${commanderOwner.nome}${isPartner ? ' (Parceiro)' : ''}`
+        : 'Comandante',
+      commanderDamageAfter: change.afterDamage,
+    };
+  }).reverse();
+}
+
 function getLobbyPayload(room) {
   const assignedRolesByPlayerId = new Map(
     (room.papeisDesignados || []).map((player) => [player.id, player])
@@ -322,6 +362,7 @@ function getLobbyPayload(room) {
     status: room.status,
     resultado: room.resultado,
     coresMagicWar: room.modoDeJogo === 'magic-war' ? MAGIC_WAR_COLORS : [],
+    combatLog: getPublicCombatLog(room),
   };
 }
 
