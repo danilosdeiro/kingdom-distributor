@@ -2,7 +2,6 @@
 
 const express = require('express');
 const http = require('http');
-const fs = require('fs');
 const path = require('path');
 const { Server } = require('socket.io');
 const cors = require('cors');
@@ -10,6 +9,7 @@ const {
   createRoomRecoveryToken,
   recoverRoomFromToken,
 } = require('./roomRecovery');
+const { createRoomStore } = require('./roomStore');
 const {
   DEFAULT_LIFE,
   addPartnerCommander,
@@ -50,6 +50,11 @@ const RECONNECT_GRACE_MS = Number(process.env.RECONNECT_GRACE_MS || 120000);
 const ROOM_STATE_FILE = process.env.ROOM_STATE_FILE || path.join(__dirname, 'data', 'rooms.json');
 const ROOM_STATE_TTL_MS = Number(process.env.ROOM_STATE_TTL_MS || 12 * 60 * 60 * 1000);
 const SERVER_STARTED_AT = Date.now();
+const roomStore = createRoomStore({
+  stateFile: ROOM_STATE_FILE,
+  ttlMs: ROOM_STATE_TTL_MS,
+});
+let saloes = {};
 
 app.use(cors({ origin: CLIENT_ORIGINS }));
 app.get('/health', (_req, res) => res.json({
@@ -57,6 +62,7 @@ app.get('/health', (_req, res) => res.json({
   roomRecovery: true,
   uptimeSeconds: Math.floor((Date.now() - SERVER_STARTED_AT) / 1000),
   activeRooms: Object.keys(saloes).length,
+  storage: roomStore.getStatus(),
 }));
 
 const server = http.createServer(app);
@@ -66,8 +72,6 @@ const io = new Server(server, {
     methods: ['GET', 'POST'],
   },
 });
-
-const saloes = loadRooms();
 
 function serializeRoom(sala) {
   return {
@@ -134,37 +138,11 @@ function restoreRoom(sala) {
   };
 }
 
-function loadRooms() {
-  try {
-    if (!fs.existsSync(ROOM_STATE_FILE)) return {};
-
-    const rawState = fs.readFileSync(ROOM_STATE_FILE, 'utf8');
-    const parsedState = JSON.parse(rawState);
-    const now = Date.now();
-
-    return Object.fromEntries(
-      Object.entries(parsedState)
-        .filter(([, sala]) => now - (sala.updatedAt || 0) <= ROOM_STATE_TTL_MS)
-        .map(([codigo, sala]) => [codigo, restoreRoom(sala)])
-    );
-  } catch (error) {
-    console.error('Nao foi possivel carregar salas salvas:', error);
-    return {};
-  }
-}
-
 function saveRooms() {
-  try {
-    fs.mkdirSync(path.dirname(ROOM_STATE_FILE), { recursive: true });
-    const serializableRooms = Object.fromEntries(
-      Object.entries(saloes).map(([codigo, sala]) => [codigo, serializeRoom(sala)])
-    );
-    const tempFile = `${ROOM_STATE_FILE}.tmp`;
-    fs.writeFileSync(tempFile, JSON.stringify(serializableRooms, null, 2));
-    fs.renameSync(tempFile, ROOM_STATE_FILE);
-  } catch (error) {
-    console.error('Nao foi possivel salvar salas:', error);
-  }
+  const serializableRooms = Object.fromEntries(
+    Object.entries(saloes).map(([codigo, sala]) => [codigo, serializeRoom(sala)])
+  );
+  roomStore.save(serializableRooms);
 }
 
 function touchRoom(sala) {
@@ -853,6 +831,27 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+async function startServer() {
+  const storedRooms = await roomStore.initialize();
+  saloes = Object.fromEntries(
+    Object.entries(storedRooms).map(([codigo, sala]) => [codigo, restoreRoom(sala)])
+  );
+
+  server.listen(PORT, () => {
+    console.log(`Servidor rodando na porta ${PORT}`);
+  });
+}
+
+async function shutdown() {
+  await roomStore.close();
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 2000).unref();
+}
+
+process.once('SIGTERM', shutdown);
+process.once('SIGINT', shutdown);
+
+startServer().catch((error) => {
+  console.error('Nao foi possivel iniciar o servidor:', error);
+  process.exit(1);
 });

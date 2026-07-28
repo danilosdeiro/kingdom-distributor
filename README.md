@@ -42,6 +42,8 @@ VITE_BACKEND_URL=http://localhost:3000
 - `RECONNECT_GRACE_MS`: tempo em milissegundos para manter jogador desconectado antes de removê-lo da sala. Padrão: `120000`.
 - `ROOM_STATE_FILE`: caminho do arquivo JSON usado para salvar salas em andamento. Padrão: `server/data/rooms.json`.
 - `ROOM_STATE_TTL_MS`: tempo máximo para manter uma sala salva. Padrão: 12 horas.
+- `REDIS_URL`: URL de conexão Redis. Quando definida, o Redis passa a ser o armazenamento durável principal.
+- `REDIS_ROOMS_KEY`: chave usada para os snapshots no Redis. Padrão: `meukingdom:rooms`.
 
 Exemplo:
 
@@ -73,4 +75,12 @@ npm start
 
 A Vercel oferece suporte nativo a WebSockets em Functions, mas conexões ficam vinculadas à duração máxima da Function e conexões futuras não têm garantia de cair na mesma instância. Por isso, o backend deve rodar em um serviço Node persistente para partidas em tempo real.
 
-O servidor salva um snapshot das salas em arquivo para sobreviver a reinícios curtos do processo. Para escalar com várias instâncias ou garantir persistência forte, o próximo passo é mover salas/partidas para um armazenamento durável como Redis.
+O servidor sempre mantém um snapshot local e, quando `REDIS_URL` está configurada, grava também uma cópia versionada no Redis. Na inicialização, ele escolhe a cópia mais recente para não restaurar dados antigos após uma indisponibilidade.
+
+O endpoint `/health` informa o armazenamento ativo:
+
+- `storage.mode: "redis"` e `storage.durable: true`: persistência durável ativa.
+- `storage.mode: "file"`: somente arquivo local.
+- `storage.mode: "file-fallback"`: Redis configurado, mas temporariamente indisponível.
+
+Os snapshots criptografados mantidos nos aparelhos continuam funcionando como uma camada adicional de recuperação.
