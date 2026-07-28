@@ -14,6 +14,7 @@ const { createRoomStore } = require('./roomStore');
 const {
   DEFAULT_LIFE,
   addPartnerCommander,
+  applyLifeBonus,
   adjustCommanderDamage,
   adjustPlayerLife,
   MAX_PLAYERS,
@@ -587,8 +588,6 @@ io.on('connection', (socket) => {
     sala.historicoMortes = [];
     sala.status = 'em_jogo';
     sala.resultado = null;
-    initializeCombatState(sala);
-
     if (sala.modoDeJogo === 'magic-war') {
       ensureMagicWarColors(sala);
       sala.papeisDesignados = createMagicWarAssignments(sala.jogadores);
@@ -606,6 +605,7 @@ io.on('connection', (socket) => {
       }));
     }
 
+    initializeCombatState(sala);
     persistRoom(sala);
     emitLobby(codigoSala, sala);
 
@@ -798,17 +798,27 @@ io.on('connection', (socket) => {
     }
 
     if (assassino.papel === 'Cacador') {
+      if (vitima.papel === 'Rei') {
+        return finishGame(codigoSala, sala, 'Assassinos', 'O Cacador eliminou o Rei. Os Assassinos vencem!');
+      }
       if (assassino.abates === 2) {
         return finishGame(codigoSala, sala, 'Cacador', 'O Cacador conseguiu sua segunda presa e venceu o jogo!');
-      }
-      if (vitima.papel === 'Rei' && assassino.abates === 1) {
-        return finishGame(codigoSala, sala, 'Assassinos', 'O Cacador foi apressado e matou o Rei como primeira vitima. Os Assassinos vencem!');
       }
     }
 
     if (vitima.papel === 'Rei') {
       if (assassino.papel === 'Usurpador') {
         assassino.papel = 'Rei';
+        const jogadorUsurpador = sala.jogadores.find((player) => player.id === assassino.id);
+        const vidaAntesDoBonus = jogadorUsurpador?.vida;
+        if (applyLifeBonus(jogadorUsurpador, 10)) {
+          recordCombatChange(sala, {
+            type: 'life',
+            playerId: jogadorUsurpador.id,
+            beforeLife: vidaAntesDoBonus,
+            afterLife: jogadorUsurpador.vida,
+          });
+        }
         persistRoom(sala);
         io.to(assassino.socketId).emit('seuPapel', { papel: getRoleLabel('Rei'), objetivo: getObjective('Rei') });
         io.to(codigoSala).emit('mensagemSistema', { mensagem: 'O Rei caiu! Vida longa ao novo Rei (Usurpador)!' });

@@ -132,8 +132,7 @@
 
 .game-guide-answer {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
-  gap: 8px;
+  gap: 12px;
   padding: 0 2px 16px 20px;
   color: #aeb8c1;
 }
@@ -142,14 +141,25 @@
   display: none;
 }
 
-.game-guide-answer svg {
-  margin-top: 3px;
-  color: var(--guide-accent);
-}
-
 .game-guide-answer p {
   margin: 0;
   overflow-wrap: anywhere;
   font-size: 0.86rem;
   line-height: 1.55;
+}
+
+.rule-label {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.rule-label.victory {
+  color: #74d49f;
+}
+
+.rule-label.defeat {
+  color: #f08088;
 }

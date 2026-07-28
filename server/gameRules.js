@@ -5,6 +5,7 @@ const MIN_PLAYERS = 5;
 const MAX_PLAYERS = 7;
 const MAGIC_WAR_MIN_PLAYERS = 3;
 const DEFAULT_LIFE = 40;
+const KING_LIFE = 50;
 const COMMANDER_DAMAGE_LIMIT = 21;
 const MAX_COMBAT_HISTORY = 30;
 const MAX_PUBLIC_COMBAT_LOG = 8;
@@ -21,12 +22,12 @@ const MAGIC_WAR_COLORS = [
 ];
 
 const OBJECTIVES = {
-  Rei: 'Sobreviver a todo custo! Voce vence se for o ultimo jogador vivo ou junto ao cavaleiro.',
-  Cavaleiro: 'Proteger o Rei. O seu unico objetivo e garantir que o Rei venca. Se o Rei vencer, voce vence tambem.',
-  Assassino: 'Matar o Rei! Assim que o Rei for eliminado, contanto que nao tenha sido morto pelo usurpador, todos os Assassinos vencem imediatamente!',
-  Usurpador: 'Matar o Rei com as suas proprias maos. Se conseguir, voce se torna o novo Rei e assume o objetivo dele e ganha + 10 de vida.',
-  Cacador: 'Eliminar dois jogadores quaisquer, exceto o Rei.',
-  Coringa: 'Ser o primeiro jogador a ser eliminado. Se nao conseguir, seu novo objetivo e eliminar um jogador qualquer para roubar o papel e o objetivo dele. (Exceto o Rei)',
+  Rei: 'Voce comeca com 50 de vida. Sua equipe vence quando os dois Assassinos forem eliminados.',
+  Cavaleiro: 'Mantenha o Rei vivo. Se a equipe do Rei vencer, voce vence junto.',
+  Assassino: 'Elimine o Rei ao lado do outro Assassino. Se o Usurpador der o golpe final, a partida continua.',
+  Usurpador: 'De o golpe final no Rei. Voce ganha 10 de vida, assume a coroa e passa a jogar como o novo Rei.',
+  Cacador: 'De o golpe final em dois jogadores que nao sejam o Rei.',
+  Coringa: 'Tente ser o primeiro eliminado. Se nao conseguir, elimine alguem para assumir o papel e o objetivo dessa pessoa, exceto o Rei.',
 };
 
 const FIXED_ROLES = ['Rei', 'Cavaleiro', 'Assassino', 'Assassino'];
@@ -202,13 +203,25 @@ function validateElimination(room, victim, killer) {
 }
 
 function initializeCombatState(room) {
+  const assignedRoles = new Map(
+    (room.papeisDesignados || []).map((assignedRole) => [assignedRole.id, assignedRole.papel])
+  );
+
   room.jogadores.forEach((player) => {
-    player.vida = DEFAULT_LIFE;
+    player.vida = assignedRoles.get(player.id) === 'Rei' ? KING_LIFE : DEFAULT_LIFE;
     player.danoComandante = {};
     player.commanderCount = 1;
   });
   room.combatHistory = [];
   room.combatSequence = 0;
+}
+
+function applyLifeBonus(player, amount) {
+  if (!player || !Number.isInteger(amount) || amount <= 0) return false;
+
+  const currentLife = Number.isInteger(player.vida) ? player.vida : DEFAULT_LIFE;
+  player.vida = Math.min(999, currentLife + amount);
+  return true;
 }
 
 function adjustPlayerLife(player, delta) {
@@ -369,6 +382,7 @@ function getLobbyPayload(room) {
 module.exports = {
   COMMANDER_DAMAGE_LIMIT,
   DEFAULT_LIFE,
+  KING_LIFE,
   DRAWABLE_ROLES,
   MAGIC_WAR_COLORS,
   MAGIC_WAR_MIN_PLAYERS,
@@ -376,6 +390,7 @@ module.exports = {
   MIN_PLAYERS,
   OBJECTIVES,
   addPartnerCommander,
+  applyLifeBonus,
   canStartGame,
   adjustCommanderDamage,
   adjustPlayerLife,
