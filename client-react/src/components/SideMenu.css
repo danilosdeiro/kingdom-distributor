@@ -23,6 +23,9 @@
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.6);
+  border: 0;
+  padding: 0;
+  cursor: pointer;
 }
 
 .sidemenu-content {
@@ -48,6 +51,7 @@
 }
 
 .sidemenu-header {
+  position: relative;
   padding: 30px 20px 20px 20px;
   text-align: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -57,6 +61,46 @@
   width: 100px;
   height: auto;
   margin-bottom: 10px;
+}
+
+.sidemenu-close {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  right: 12px;
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ecf0f1;
+  cursor: pointer;
+}
+
+.app-version-status {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  color: #b9c3cd;
+  font-size: 0.8rem;
+}
+
+.app-version-status button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  border: 1px solid rgba(230, 210, 170, 0.5);
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: transparent;
+  color: #f0dcae;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 .faq-container {

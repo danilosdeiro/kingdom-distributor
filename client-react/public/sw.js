@@ -40,6 +40,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  if (url.pathname === '/app-update.json') {
+    event.respondWith(fetch(request, { cache: 'no-store' }));
+    return;
+  }
+
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
