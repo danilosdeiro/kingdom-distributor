@@ -5,6 +5,7 @@ import { gameState } from '../services/gameState';
 import { rejoinSavedRoom } from '../services/rejoinRoom';
 import { getPlayerId } from '../services/playerIdentity';
 import { clearRoomSession } from '../services/roomSession';
+import { showSocketError, type SocketErrorPayload } from '../services/socketError';
 import { toast } from 'react-hot-toast';
 import './Lobby.css';
 
@@ -108,9 +109,7 @@ const handleCompartilhar = () => {
         navigate('/', { replace: true });
     };
 
-    const handleErro = ({ mensagem }: { mensagem: string }) => {
-      toast.error(mensagem);
-    };
+    const handleErro = (error: SocketErrorPayload) => showSocketError(error);
 
     const handleConnect = () => {
       setMeuId(getPlayerId());

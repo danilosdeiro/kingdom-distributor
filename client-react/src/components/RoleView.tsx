@@ -5,6 +5,7 @@ import { socket } from '../services/socket';
 import { rejoinSavedRoom } from '../services/rejoinRoom';
 import { getPlayerId } from '../services/playerIdentity';
 import { clearRoomSession } from '../services/roomSession';
+import { showSocketError, type SocketErrorPayload } from '../services/socketError';
 import {
   playEliminationWarning,
   playQuickAdjustmentFeedback,
@@ -204,9 +205,7 @@ export function RoleView() {
       }
     };
 
-    const handleErro = ({ mensagem }: { mensagem: string }) => {
-      toast.error(mensagem);
-    };
+    const handleErro = (error: SocketErrorPayload) => showSocketError(error);
 
     const handleConnect = () => {
       setMeuId(getPlayerId());

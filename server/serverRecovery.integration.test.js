@@ -128,6 +128,15 @@ test('an active match recovers after the server and ephemeral file are lost', { 
     sockets[0].emit('distribuirPapeis', { codigo });
     await Promise.all(roles);
 
+    const invalidLifeChange = waitForEvent(
+      sockets[0],
+      'erro',
+      (data) => data.mensagem === 'Alteracao de vida invalida.'
+    );
+    sockets[0].emit('alterarVida', { codigo, delta: 2 });
+    const diagnosticError = await invalidLifeChange;
+    assert.match(diagnosticError.codigoDiagnostico, /^MK-[A-F0-9]{6}$/);
+
     const tokenBeforeLifeChange = latestRecoveryToken;
     const recoveryAfterLife = waitForEvent(
       sockets[0],

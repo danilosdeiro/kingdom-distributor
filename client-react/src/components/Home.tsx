@@ -5,6 +5,7 @@ import { gameState } from '../services/gameState';
 import { getPlayerId } from '../services/playerIdentity';
 import { clearRoomSession } from '../services/roomSession';
 import { getRoomRecoveryToken } from '../services/roomRecovery';
+import { showSocketError, type SocketErrorPayload } from '../services/socketError';
 import { toast } from 'react-hot-toast';
 import './Home.css';
 
@@ -69,8 +70,9 @@ export function Home() {
       navigate('/role', { replace: true });
     };
 
-    const handleErro = ({ mensagem }: { mensagem: string }) => {
-      toast.error(mensagem);
+    const handleErro = (error: SocketErrorPayload) => {
+      showSocketError(error);
+      const { mensagem } = error;
       if (mensagem.toLowerCase().includes('sala nao encontrada')) {
         clearRoomSession();
         setTemSalaSalva(false);

@@ -9,6 +9,7 @@ const {
   createRoomRecoveryToken,
   recoverRoomFromToken,
 } = require('./roomRecovery');
+const { createDiagnostics } = require('./diagnostics');
 const { createRoomStore } = require('./roomStore');
 const {
   DEFAULT_LIFE,
@@ -54,6 +55,7 @@ const roomStore = createRoomStore({
   stateFile: ROOM_STATE_FILE,
   ttlMs: ROOM_STATE_TTL_MS,
 });
+const diagnostics = createDiagnostics();
 let saloes = {};
 
 app.use(cors({ origin: CLIENT_ORIGINS }));
@@ -118,7 +120,11 @@ function installRecoveredRoom(codigo, recoveredRoom, currentRoom = null) {
   preserveRuntimeConnections(recoveredRoom, currentRoom);
   saloes[codigo] = recoveredRoom;
   saveRooms();
-  console.log(`Sala ${codigo} restaurada por token de recuperacao.`);
+  diagnostics.reportEvent('room_recovered', {
+    roomCode: codigo,
+    room: recoveredRoom,
+    storageMode: roomStore.getStatus().mode,
+  });
   return recoveredRoom;
 }
 
@@ -166,6 +172,35 @@ function removeRoom(codigo) {
 
 function roomExists(codigo) {
   return Boolean(saloes[codigo]);
+}
+
+function emitSocketError(socket, mensagem) {
+  const now = Date.now();
+  const rate = socket.data.diagnosticRate || { startedAt: now, count: 0 };
+  if (now - rate.startedAt > 60000) {
+    rate.startedAt = now;
+    rate.count = 0;
+  }
+  rate.count += 1;
+  socket.data.diagnosticRate = rate;
+
+  const found = findRoomBySocket(socket.id);
+  const roomCode = socket.data.roomCode || found?.codigo;
+  const room = roomCode ? saloes[roomCode] : found?.sala;
+  const codigoDiagnostico = rate.count <= 20
+    ? diagnostics.reportSocketError(mensagem, {
+      event: socket.data.lastEvent,
+      roomCode,
+      playerId: socket.data.playerId || found?.jogador?.id,
+      room,
+      storageMode: roomStore.getStatus().mode,
+    })
+    : undefined;
+
+  socket.emit('erro', {
+    mensagem,
+    codigoDiagnostico,
+  });
 }
 
 function emitLobby(codigo, sala) {
@@ -313,11 +348,16 @@ function finishGame(codigo, sala, vencedor, mensagem) {
 }
 
 io.on('connection', (socket) => {
+  socket.onAny((event) => {
+    socket.data.lastEvent = event;
+  });
+
   socket.on('criarSala', ({ nome, playerId }) => {
     const nomeLimpo = normalizePlayerName(nome);
     const jogadorId = normalizePlayerId(playerId) || socket.id;
+    socket.data.playerId = jogadorId;
     if (!nomeLimpo) {
-      return socket.emit('erro', { mensagem: 'Digite seu nome primeiro.' });
+      return emitSocketError(socket, 'Digite seu nome primeiro.');
     }
 
     const codigoSala = generateRoomCode(roomExists);
@@ -334,6 +374,7 @@ io.on('connection', (socket) => {
     };
 
     socket.join(codigoSala);
+    socket.data.roomCode = codigoSala;
     saveRooms();
     emitRoomRecovery(socket, codigoSala, saloes[codigoSala]);
     socket.emit('salaCriada', { codigo: codigoSala, jogadores: saloes[codigoSala].jogadores });
@@ -343,6 +384,8 @@ io.on('connection', (socket) => {
     const codigoSala = normalizeRoomCode(codigo);
     const nomeLimpo = normalizePlayerName(nome);
     const jogadorId = normalizePlayerId(playerId) || socket.id;
+    socket.data.playerId = jogadorId;
+    socket.data.roomCode = codigoSala;
     let sala = saloes[codigoSala];
     let salaFoiRecuperada = false;
     const recoveredRoom = recoveryToken
@@ -363,11 +406,11 @@ io.on('connection', (socket) => {
     }
 
     if (!sala) {
-      return socket.emit('erro', { mensagem: 'Sala nao encontrada.' });
+      return emitSocketError(socket, 'Sala nao encontrada.');
     }
 
     if (!nomeLimpo) {
-      return socket.emit('erro', { mensagem: 'Digite seu nome primeiro.' });
+      return emitSocketError(socket, 'Digite seu nome primeiro.');
     }
 
     let jogadorIndex = sala.jogadores.findIndex((player) => player.id === jogadorId || player.socketId === socket.id);
@@ -376,14 +419,14 @@ io.on('connection', (socket) => {
     if (jogadorIndex === -1 && jogadorComMesmoNomeIndex > -1) {
       const jogadorComMesmoNome = sala.jogadores[jogadorComMesmoNomeIndex];
       if (jogadorComMesmoNome.connected) {
-        return socket.emit('erro', { mensagem: 'Esse nome ja esta em uso nessa sala.' });
+        return emitSocketError(socket, 'Esse nome ja esta em uso nessa sala.');
       }
 
       jogadorIndex = jogadorComMesmoNomeIndex;
     }
 
     if (jogadorIndex === -1 && sala.status !== 'lobby') {
-      return socket.emit('erro', { mensagem: 'A partida ja comecou. Apenas jogadores da sala podem reconectar.' });
+      return emitSocketError(socket, 'A partida ja comecou. Apenas jogadores da sala podem reconectar.');
     }
 
     let roomStateChanged = false;
@@ -429,7 +472,7 @@ io.on('connection', (socket) => {
       }
     } else {
       if (sala.jogadores.length >= MAX_PLAYERS) {
-        return socket.emit('erro', { mensagem: `A sala '${codigoSala}' esta cheia.` });
+        return emitSocketError(socket, `A sala '${codigoSala}' esta cheia.`);
       }
 
       sala.jogadores.push({ id: jogadorId, socketId: socket.id, nome: nomeLimpo, connected: true, vida: DEFAULT_LIFE, danoComandante: {} });
@@ -457,7 +500,7 @@ io.on('connection', (socket) => {
     const sala = saloes[codigoSala];
 
     if (!sala) {
-      return socket.emit('erro', { mensagem: 'Sala nao encontrada.' });
+      return emitSocketError(socket, 'Sala nao encontrada.');
     }
 
     socket.join(codigoSala);
@@ -489,11 +532,11 @@ io.on('connection', (socket) => {
     const jogador = sala?.jogadores.find((player) => player.socketId === socket.id);
 
     if (!sala || !jogador || sala.modoDeJogo !== 'magic-war' || sala.status === 'em_jogo') {
-      return socket.emit('erro', { mensagem: 'Nao e possivel escolher uma cor agora.' });
+      return emitSocketError(socket, 'Nao e possivel escolher uma cor agora.');
     }
 
     if (!setMagicWarColor(sala, jogador.id, String(corId || ''))) {
-      return socket.emit('erro', { mensagem: 'Essa cor nao esta mais disponivel.' });
+      return emitSocketError(socket, 'Essa cor nao esta mais disponivel.');
     }
 
     persistRoom(sala);
@@ -530,12 +573,12 @@ io.on('connection', (socket) => {
 
     const host = sala.jogadores.find((player) => player.socketId === socket.id);
     if (host?.id !== sala.hostId || !canStartGame(numeroDeJogadores, sala.modoDeJogo, papeisPersonalizados)) {
-      return socket.emit('erro', { mensagem: 'Condicoes para iniciar a partida nao foram atendidas.' });
+      return emitSocketError(socket, 'Condicoes para iniciar a partida nao foram atendidas.');
     }
 
     const jogadoresDesconectados = sala.jogadores.filter((player) => !player.connected);
     if (jogadoresDesconectados.length > 0) {
-      return socket.emit('erro', { mensagem: 'Aguarde todos reconectarem antes de distribuir os papeis.' });
+      return emitSocketError(socket, 'Aguarde todos reconectarem antes de distribuir os papeis.');
     }
 
     sala.historicoMortes = [];
@@ -575,12 +618,12 @@ io.on('connection', (socket) => {
     const papel = sala?.papeisDesignados?.find((player) => player.id === jogador?.id);
 
     if (!sala || sala.status !== 'em_jogo' || !jogador || papel?.vivo === false) {
-      return socket.emit('erro', { mensagem: 'Nao e possivel alterar a vida agora.' });
+      return emitSocketError(socket, 'Nao e possivel alterar a vida agora.');
     }
 
     const beforeLife = Number.isInteger(jogador.vida) ? jogador.vida : DEFAULT_LIFE;
     if (!adjustPlayerLife(jogador, Number(delta))) {
-      return socket.emit('erro', { mensagem: 'Alteracao de vida invalida.' });
+      return emitSocketError(socket, 'Alteracao de vida invalida.');
     }
 
     if (jogador.vida !== beforeLife) {
@@ -603,7 +646,7 @@ io.on('connection', (socket) => {
     const papel = sala?.papeisDesignados?.find((player) => player.id === jogador?.id);
 
     if (!sala || sala.status !== 'em_jogo' || !jogador || papel?.vivo === false) {
-      return socket.emit('erro', { mensagem: 'Nao e possivel alterar o dano de comandante agora.' });
+      return emitSocketError(socket, 'Nao e possivel alterar o dano de comandante agora.');
     }
 
     const comandanteIdLimpo = String(comandanteId || '').trim().slice(0, 100);
@@ -612,7 +655,7 @@ io.on('connection', (socket) => {
       ? jogador.danoComandante[comandanteIdLimpo]
       : 0;
     if (!adjustCommanderDamage(jogador, comandanteIdLimpo, Number(delta), sala.jogadores)) {
-      return socket.emit('erro', { mensagem: 'Alteracao de dano de comandante invalida.' });
+      return emitSocketError(socket, 'Alteracao de dano de comandante invalida.');
     }
 
     const afterDamage = jogador.danoComandante[comandanteIdLimpo];
@@ -639,12 +682,12 @@ io.on('connection', (socket) => {
     const papel = sala?.papeisDesignados?.find((player) => player.id === jogador?.id);
 
     if (!sala || sala.status !== 'em_jogo' || !jogador || papel?.vivo === false) {
-      return socket.emit('erro', { mensagem: 'Nao e possivel desfazer uma alteracao agora.' });
+      return emitSocketError(socket, 'Nao e possivel desfazer uma alteracao agora.');
     }
 
     const change = undoLastCombatChange(sala, jogador.id);
     if (!change) {
-      return socket.emit('erro', { mensagem: 'Nao ha alteracoes para desfazer.' });
+      return emitSocketError(socket, 'Nao ha alteracoes para desfazer.');
     }
 
     persistRoom(sala);
@@ -662,11 +705,11 @@ io.on('connection', (socket) => {
     const jogador = sala?.jogadores.find((player) => player.socketId === socket.id);
 
     if (!sala || sala.status !== 'em_jogo' || !jogador) {
-      return socket.emit('erro', { mensagem: 'Nao e possivel adicionar um comandante agora.' });
+      return emitSocketError(socket, 'Nao e possivel adicionar um comandante agora.');
     }
 
     if (!addPartnerCommander(sala, jogador.id)) {
-      return socket.emit('erro', { mensagem: 'Nao foi possivel adicionar o segundo comandante.' });
+      return emitSocketError(socket, 'Nao foi possivel adicionar o segundo comandante.');
     }
 
     persistRoom(sala);
@@ -688,7 +731,7 @@ io.on('connection', (socket) => {
       jogadorReportando.id === vitimaId || jogadorReportando.id === sala.hostId
     );
     if (!podeRegistrarEliminacao) {
-      return socket.emit('erro', { mensagem: 'Apenas a vitima ou o host podem registrar a eliminacao.' });
+      return emitSocketError(socket, 'Apenas a vitima ou o host podem registrar a eliminacao.');
     }
 
     const vitima = sala.papeisDesignados.find((player) => player.id === vitimaId);
@@ -699,7 +742,7 @@ io.on('connection', (socket) => {
     ));
 
     if (!validateElimination(sala, vitima, assassino)) {
-      return socket.emit('erro', { mensagem: 'Eliminacao invalida.' });
+      return emitSocketError(socket, 'Eliminacao invalida.');
     }
 
     vitima.vivo = false;
@@ -810,7 +853,7 @@ io.on('connection', (socket) => {
 
     if (!sala || !jogador) return;
     if (sala.status !== 'finalizado' && sala.status !== 'lobby') {
-      return socket.emit('erro', { mensagem: 'A partida ainda nao terminou.' });
+      return emitSocketError(socket, 'A partida ainda nao terminou.');
     }
 
     if (sala.status === 'finalizado') resetRoomForLobby(sala);
@@ -838,7 +881,9 @@ async function startServer() {
   );
 
   server.listen(PORT, () => {
-    console.log(`Servidor rodando na porta ${PORT}`);
+    diagnostics.reportEvent('server_started', {
+      storageMode: roomStore.getStatus().mode,
+    });
   });
 }
 
@@ -852,6 +897,8 @@ process.once('SIGTERM', shutdown);
 process.once('SIGINT', shutdown);
 
 startServer().catch((error) => {
-  console.error('Nao foi possivel iniciar o servidor:', error);
+  diagnostics.reportSystemError('Nao foi possivel iniciar o servidor.', error, {
+    storageMode: roomStore.getStatus().mode,
+  });
   process.exit(1);
 });
