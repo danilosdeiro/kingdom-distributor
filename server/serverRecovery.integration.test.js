@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const net = require('net');
 const { spawn } = require('child_process');
 const { io } = require('socket.io-client');
 
@@ -68,8 +69,19 @@ function connect(url) {
   });
 }
 
+function getAvailablePort() {
+  return new Promise((resolve, reject) => {
+    const probe = net.createServer();
+    probe.once('error', reject);
+    probe.listen(0, '127.0.0.1', () => {
+      const address = probe.address();
+      probe.close(() => resolve(address.port));
+    });
+  });
+}
+
 test('an active match recovers after the server and ephemeral file are lost', { timeout: 30000 }, async () => {
-  const port = 32000 + Math.floor(Math.random() * 1000);
+  const port = await getAvailablePort();
   const url = `http://127.0.0.1:${port}`;
   const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'meukingdom-recovery-'));
   const stateFile = path.join(tempDirectory, 'rooms.json');
