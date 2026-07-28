@@ -212,7 +212,7 @@ function initializeCombatState(room) {
 }
 
 function adjustPlayerLife(player, delta) {
-  if (!player || ![-1, 1].includes(delta)) return false;
+  if (!player || ![-5, -1, 1, 5].includes(delta)) return false;
 
   const currentLife = Number.isInteger(player.vida) ? player.vida : DEFAULT_LIFE;
   player.vida = Math.max(-999, Math.min(999, currentLife + delta));

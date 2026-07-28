@@ -160,7 +160,11 @@ test('players can adjust only valid life and commander damage steps', () => {
 
   assert.equal(adjustPlayerLife(player, -1), true);
   assert.equal(player.vida, 39);
-  assert.equal(adjustPlayerLife(player, 5), false);
+  assert.equal(adjustPlayerLife(player, 5), true);
+  assert.equal(player.vida, 44);
+  assert.equal(adjustPlayerLife(player, -5), true);
+  assert.equal(player.vida, 39);
+  assert.equal(adjustPlayerLife(player, 2), false);
   assert.equal(adjustCommanderDamage(player, 'b', 1, players), true);
   assert.equal(adjustCommanderDamage(player, 'b', 1, players), true);
   assert.equal(player.danoComandante.b, 2);
