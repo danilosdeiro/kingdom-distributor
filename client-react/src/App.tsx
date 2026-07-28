@@ -5,6 +5,8 @@ import { Outlet } from 'react-router-dom';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { Footer } from './components/Footer';
 import { SideMenu } from './components/SideMenu';
+import { AppUpdateNotice } from './components/AppUpdateNotice';
+import { AppUpdateProvider } from './contexts/AppUpdateProvider';
 import { toast, Toaster } from 'react-hot-toast';
 import { socket } from './services/socket';
 import { saveRoomRecovery } from './services/roomRecovery';
@@ -14,9 +16,8 @@ function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Lógica de toggle: se o menu está aberto, fecha; se está fechado, abre.
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
+  const toggleMenu = () => setIsMenuOpen((current) => !current);
+  const closeMenu = () => setIsMenuOpen(false);
 
   useEffect(() => {
     const handleSalvarRecuperacao = (data: { codigo: string; token: string }) => {
@@ -35,9 +36,15 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    document.body.style.overflow = isMenuOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMenuOpen]);
+
   return (
-    // Adiciona uma classe ao layout quando o menu está aberto
-    // Útil para, por exemplo, impedir o scroll da página de fundo
+    <AppUpdateProvider>
     <div className={`app-layout ${isMenuOpen ? 'menu-open' : ''}`}>
     <Toaster 
       position="top-center" 
@@ -59,7 +66,9 @@ function App() {
       <button 
         className={`menu-toggle-button ${isMenuOpen ? 'open' : ''}`} 
         onClick={toggleMenu}
-        aria-label="Abrir menu"
+        aria-label={isMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+        aria-expanded={isMenuOpen}
+        aria-controls="app-side-menu"
       >
         {/* As três linhas do ícone de hamburguer */}
         <div className="line line1"></div>
@@ -67,14 +76,16 @@ function App() {
         <div className="line line3"></div>
       </button>
       
-      <SideMenu isOpen={isMenuOpen} onClose={toggleMenu} />
+      <SideMenu isOpen={isMenuOpen} onClose={closeMenu} />
       
-      <main className="main-content">
+      <main className="main-content" aria-hidden={isMenuOpen}>
         <Outlet />
       </main>
 
       <Footer />
+      <AppUpdateNotice />
     </div>
+    </AppUpdateProvider>
   );
 }
 
