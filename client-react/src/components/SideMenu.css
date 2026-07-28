@@ -4,7 +4,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 1000;
+  z-index: 1200;
   
   visibility: hidden;
   opacity: 0;
@@ -35,7 +35,7 @@
   width: 90%;
   max-width: 400px;
   height: 100%;
-  background-color: #1e2a38;
+  background-color: #191c21;
   box-shadow: -5px 0 15px rgba(0,0,0,0.3);
   
   transform: translateX(100%);
@@ -101,8 +101,4 @@
   color: #f0dcae;
   font-weight: 800;
   cursor: pointer;
-}
-
-.faq-container {
-  padding: 20px;
 }
