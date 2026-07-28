@@ -483,7 +483,10 @@ io.on('connection', (socket) => {
     socket.join(codigoSala);
     persistRoom(sala, { stateChanged: roomStateChanged });
     emitLobby(codigoSala, sala);
-    socket.emit('entradaComSucesso');
+    socket.emit('entradaComSucesso', {
+      codigo: codigoSala,
+      status: sala.status,
+    });
     if (salaFoiRecuperada) {
       socket.emit('salaRecuperada', {
         mensagem: 'A partida foi recuperada apos o servidor reiniciar.',

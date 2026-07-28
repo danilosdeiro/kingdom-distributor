@@ -1,4 +1,5 @@
 import { clearRoomRecovery } from './roomRecovery';
+import { markRoomConnectionLeft } from './roomConnection';
 
 export function clearRoomSession() {
   sessionStorage.removeItem('ultimoPapel');
@@ -6,4 +7,5 @@ export function clearRoomSession() {
   localStorage.removeItem('jogadoresDaSala');
   localStorage.removeItem('meuId');
   clearRoomRecovery();
+  markRoomConnectionLeft();
 }

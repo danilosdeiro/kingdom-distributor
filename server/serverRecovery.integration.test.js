@@ -113,7 +113,10 @@ test('an active match recovers after the server and ephemeral file are lost', { 
         nome: names[index + 1],
         playerId: ids[index + 1],
       });
-      return entered;
+      return entered.then((data) => {
+        assert.equal(data.codigo, codigo);
+        assert.equal(data.status, 'lobby');
+      });
     }));
 
     const magicWarLobby = waitForEvent(

@@ -3,8 +3,9 @@ import { useNavigate, Link, useParams } from 'react-router-dom';
 import { socket } from '../services/socket';
 import { gameState } from '../services/gameState';
 import { getPlayerId } from '../services/playerIdentity';
+import { rejoinSavedRoom } from '../services/rejoinRoom';
 import { clearRoomSession } from '../services/roomSession';
-import { getRoomRecoveryToken } from '../services/roomRecovery';
+import { beginRoomSync } from '../services/roomConnection';
 import { showSocketError, type SocketErrorPayload } from '../services/socketError';
 import { toast } from 'react-hot-toast';
 import './Home.css';
@@ -100,12 +101,7 @@ export function Home() {
     if (codigo && nomeSalvo) {
       setCodigoSala(codigo);
       setNome(nomeSalvo);
-      socket.emit('entrarSala', {
-        codigo,
-        nome: nomeSalvo,
-        playerId: getPlayerId(),
-        recoveryToken: getRoomRecoveryToken(codigo),
-      });
+      rejoinSavedRoom(true);
     }
   };
 
@@ -119,6 +115,7 @@ export function Home() {
     setTemPapelSalvo(false);
     setTemSalaSalva(false);
     localStorage.setItem('meuNome', nome.trim());
+    beginRoomSync();
     socket.emit('criarSala', { nome: nome.trim(), playerId: getPlayerId() });
   };
 
@@ -135,6 +132,7 @@ export function Home() {
     setTemSalaSalva(false);
     localStorage.setItem('meuNome', nome.trim());
     localStorage.setItem('salaAtual', codigoLimpo);
+    beginRoomSync(codigoLimpo);
 
     socket.emit('entrarSala', {
       codigo: codigoLimpo,
