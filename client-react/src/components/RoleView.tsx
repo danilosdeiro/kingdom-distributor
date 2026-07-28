@@ -5,6 +5,11 @@ import { socket } from '../services/socket';
 import { rejoinSavedRoom } from '../services/rejoinRoom';
 import { getPlayerId } from '../services/playerIdentity';
 import { clearRoomSession } from '../services/roomSession';
+import {
+  playEliminationWarning,
+  playTapFeedback,
+  playUndoFeedback,
+} from '../services/haptics';
 import { toast } from 'react-hot-toast';
 import './RoleView.css';
 
@@ -170,8 +175,10 @@ export function RoleView() {
           if (previousThresholds.commanderDamage < 21 && currentThresholds.commanderDamage >= 21) {
             setAlertaEliminacao('Você chegou a 21 de dano de comandante.');
             setModalDanoComandanteAberto(false);
+            playEliminationWarning();
           } else if (previousThresholds.life > 0 && currentThresholds.life <= 0) {
             setAlertaEliminacao('Sua vida chegou a zero.');
+            playEliminationWarning();
           }
         }
         previousCombatThresholds.current = currentThresholds;
@@ -191,6 +198,7 @@ export function RoleView() {
     };
 
     const handleAlteracaoCombateDesfeita = ({ mensagem }: { mensagem: string }) => {
+      playUndoFeedback();
       toast.success(mensagem);
     };
 
@@ -281,12 +289,18 @@ export function RoleView() {
 
   const alterarVida = (delta: -1 | 1) => {
     const codigoSala = localStorage.getItem('salaAtual');
-    if (codigoSala) socket.emit('alterarVida', { codigo: codigoSala, delta });
+    if (codigoSala) {
+      playTapFeedback();
+      socket.emit('alterarVida', { codigo: codigoSala, delta });
+    }
   };
 
   const alterarDanoComandante = (comandanteId: string, delta: -1 | 1) => {
     const codigoSala = localStorage.getItem('salaAtual');
-    if (codigoSala) socket.emit('alterarDanoComandante', { codigo: codigoSala, comandanteId, delta });
+    if (codigoSala) {
+      playTapFeedback();
+      socket.emit('alterarDanoComandante', { codigo: codigoSala, comandanteId, delta });
+    }
   };
 
   const desfazerUltimaAlteracaoCombate = () => {
