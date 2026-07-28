@@ -366,6 +366,103 @@
   box-shadow: 0 0 10px rgba(211, 47, 47, 0.45);
 }
 
+.combat-history-panel {
+  margin: 18px 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: left;
+}
+
+.combat-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.combat-history-header h2 {
+  margin: 0;
+  color: #e6d2aa;
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+}
+
+.combat-history-header > span {
+  color: #92949a;
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.combat-history-list {
+  display: grid;
+}
+
+.combat-history-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+  padding: 9px 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.combat-history-copy {
+  min-width: 0;
+}
+
+.combat-history-copy p {
+  margin: 0;
+  color: #c9c9cd;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.combat-history-copy p strong {
+  color: #f1f1f2;
+}
+
+.combat-history-copy time {
+  display: block;
+  margin-top: 3px;
+  color: #777980;
+  font-size: 0.68rem;
+}
+
+.combat-history-values {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.combat-history-values strong {
+  color: #f0f0f1;
+  font-size: 0.82rem;
+}
+
+.combat-history-values span {
+  color: #d2b76e;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.combat-history-toggle {
+  width: 100%;
+  min-height: 40px;
+  margin-top: 7px;
+  border: 1px solid #505258;
+  border-radius: 6px;
+  background: #2b2c30;
+  color: #c9c9cc;
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 .back-button {
   width: 100%;
   padding: 14px;

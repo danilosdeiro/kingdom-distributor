@@ -59,6 +59,18 @@ interface GameResult {
   revelacao?: RevelacaoPapel[];
 }
 
+interface CombatLogEntry {
+  id: string;
+  type: 'life' | 'commander';
+  playerId: string;
+  playerName: string;
+  delta: number;
+  lifeAfter: number;
+  createdAt: number;
+  commanderName?: string;
+  commanderDamageAfter?: number;
+}
+
 interface CombatThresholds {
   life: number;
   commanderDamage: number;
@@ -93,6 +105,8 @@ export function RoleView() {
   const [vitimaSelecionadaId, setVitimaSelecionadaId] = useState('');
   const [eliminadorSelecionadoId, setEliminadorSelecionadoId] = useState('');
   const [alertaEliminacao, setAlertaEliminacao] = useState<string | null>(null);
+  const [combatLog, setCombatLog] = useState<CombatLogEntry[]>([]);
+  const [historicoExpandido, setHistoricoExpandido] = useState(false);
   const previousCombatThresholds = useRef<CombatThresholds | null>(null);
 
   const navigate = useNavigate();
@@ -159,8 +173,9 @@ export function RoleView() {
       papelStorage.set(novoPapelInfo);
     };
 
-    const handleAtualizarLobby = (dados: { jogadores: Jogador[]; hostId?: string; status?: string; resultado?: GameResult | null }) => {
+    const handleAtualizarLobby = (dados: { jogadores: Jogador[]; hostId?: string; status?: string; resultado?: GameResult | null; combatLog?: CombatLogEntry[] }) => {
       setJogadoresVivos(dados.jogadores);
+      setCombatLog(dados.combatLog || []);
       if (dados.hostId) setHostId(dados.hostId);
       localStorage.setItem('jogadoresDaSala', JSON.stringify(dados.jogadores));
       const jogadorAtual = dados.jogadores.find((jogador) => jogador.id === getPlayerId());
@@ -424,6 +439,58 @@ export function RoleView() {
     );
   };
 
+  const renderHistoricoCombate = () => {
+    if (combatLog.length === 0) return null;
+
+    const visibleEntries = historicoExpandido ? combatLog : combatLog.slice(0, 3);
+
+    return (
+      <section className="combat-history-panel" aria-label="Histórico da partida">
+        <div className="combat-history-header">
+          <h2>Histórico</h2>
+          <span>{combatLog.length} {combatLog.length === 1 ? 'ação' : 'ações'}</span>
+        </div>
+        <div className="combat-history-list">
+          {visibleEntries.map((entry) => {
+            const player = jogadoresVivos.find((item) => item.id === entry.playerId);
+            const playerColor = player?.cor
+              ? player.cor.id === 'black' ? '#aaa5b3' : player.cor.hex
+              : undefined;
+            const amount = Math.abs(entry.delta);
+
+            return (
+              <div className="combat-history-item" key={entry.id}>
+                <div className="combat-history-copy">
+                  <p>
+                    <strong style={playerColor ? { color: playerColor } : undefined}>{entry.playerName}</strong>
+                    {' '}
+                    {entry.type === 'life'
+                      ? entry.delta < 0 ? `perdeu ${amount} de vida` : `ganhou ${amount} de vida`
+                      : entry.delta < 0
+                        ? `removeu ${amount} de comandante de ${entry.commanderName}`
+                        : `recebeu ${amount} de comandante de ${entry.commanderName}`}
+                  </p>
+                  <time dateTime={new Date(entry.createdAt).toISOString()}>
+                    {new Date(entry.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  </time>
+                </div>
+                <div className="combat-history-values">
+                  <strong>{entry.lifeAfter} PV</strong>
+                  {entry.type === 'commander' && <span>{entry.commanderDamageAfter}/21</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {combatLog.length > 3 && (
+          <button type="button" className="combat-history-toggle" onClick={() => setHistoricoExpandido((current) => !current)}>
+            {historicoExpandido ? 'Mostrar menos' : `Ver mais (${combatLog.length - 3})`}
+          </button>
+        )}
+      </section>
+    );
+  };
+
   const renderDetalhesDanoComandante = () => {
     const jogadorDetalhes = jogadoresVivos.find((jogador) => jogador.id === jogadorDetalhesId);
     if (!jogadorDetalhes) return null;
@@ -506,6 +573,7 @@ export function RoleView() {
           <h1 style={{ color: '#d32f2f' }}>ELIMINADO</h1>
           <p>Você está morto. Aguarde o fim da partida em silêncio.</p>
           {renderListaJogadores()}
+          {renderHistoricoCombate()}
           {renderDetalhesDanoComandante()}
           <div className="role-actions">
             <button className="back-button" onClick={voltarAoLobby}>
@@ -533,6 +601,8 @@ export function RoleView() {
         {renderContadorVida()}
 
         {renderListaJogadores()}
+
+        {renderHistoricoCombate()}
 
         <p className="private-role-label">{meuPapel.modoDeJogo === 'magic-war' ? 'Sua cor é:' : 'Seu Papel Secreto é:'}</p>
 

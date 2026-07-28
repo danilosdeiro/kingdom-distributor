@@ -128,7 +128,10 @@ test('an active match recovers after the server and ephemeral file are lost', { 
       (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === 39
     );
     sockets[0].emit('alterarVida', { codigo, delta: -1 });
-    await Promise.all([lifeAt39, recoveryAfterLife]);
+    const [changedLobby] = await Promise.all([lifeAt39, recoveryAfterLife]);
+    assert.equal(changedLobby.combatLog[0].playerName, names[0]);
+    assert.equal(changedLobby.combatLog[0].delta, -1);
+    assert.equal(changedLobby.combatLog[0].lifeAfter, 39);
     assert.ok(latestRecoveryToken);
 
     const tokenAfterLifeChange = latestRecoveryToken;
@@ -146,6 +149,7 @@ test('an active match recovers after the server and ephemeral file are lost', { 
     sockets[0].emit('desfazerUltimaAlteracaoCombate', { codigo });
     const [restoredLobby] = await Promise.all([lifeRestored, recoveryAfterUndo, undoConfirmed]);
     assert.equal(restoredLobby.jogadores.find((player) => player.id === ids[0]).canUndoCombat, false);
+    assert.deepEqual(restoredLobby.combatLog, []);
 
     const tokenAfterUndo = latestRecoveryToken;
     const recoveryAfterSecondLifeChange = waitForEvent(
