@@ -7,6 +7,7 @@ import { getPlayerId } from '../services/playerIdentity';
 import { clearRoomSession } from '../services/roomSession';
 import {
   playEliminationWarning,
+  playQuickAdjustmentFeedback,
   playTapFeedback,
   playUndoFeedback,
 } from '../services/haptics';
@@ -302,10 +303,14 @@ export function RoleView() {
     navigate('/');
   };
 
-  const alterarVida = (delta: -1 | 1) => {
+  const alterarVida = (delta: -5 | -1 | 1 | 5) => {
     const codigoSala = localStorage.getItem('salaAtual');
     if (codigoSala) {
-      playTapFeedback();
+      if (Math.abs(delta) === 5) {
+        playQuickAdjustmentFeedback();
+      } else {
+        playTapFeedback();
+      }
       socket.emit('alterarVida', { codigo: codigoSala, delta });
     }
   };
@@ -385,6 +390,10 @@ export function RoleView() {
           <button type="button" className="life-side life-plus" onClick={() => alterarVida(1)} aria-label="Aumentar uma vida">
             <span aria-hidden="true">+</span>
           </button>
+        </div>
+        <div className="quick-life-actions" aria-label="Ajustes rápidos de vida">
+          <button type="button" onClick={() => alterarVida(-5)} aria-label="Diminuir cinco vidas">−5</button>
+          <button type="button" onClick={() => alterarVida(5)} aria-label="Aumentar cinco vidas">+5</button>
         </div>
       </section>
     );

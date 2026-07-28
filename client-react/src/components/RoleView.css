@@ -209,6 +209,32 @@
   color: #ff7b82;
 }
 
+.quick-life-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.quick-life-actions button {
+  min-height: 46px;
+  padding: 8px 12px;
+  border: 1px solid #777b82;
+  border-radius: 6px;
+  background: #3a3c40;
+  color: #f3f3f4;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 900;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.quick-life-actions button:active {
+  background: #55585e;
+}
+
 .private-role-label {
   margin: 0 0 8px;
   font-size: 0.88rem !important;

@@ -8,6 +8,10 @@ export function playTapFeedback() {
   ignoreUnsupported(Haptics.impact({ style: ImpactStyle.Light }));
 }
 
+export function playQuickAdjustmentFeedback() {
+  ignoreUnsupported(Haptics.impact({ style: ImpactStyle.Medium }));
+}
+
 export function playUndoFeedback() {
   ignoreUnsupported(Haptics.impact({ style: ImpactStyle.Medium }));
 }

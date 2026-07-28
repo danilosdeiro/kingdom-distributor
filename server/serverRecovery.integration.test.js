@@ -122,16 +122,16 @@ test('an active match recovers after the server and ephemeral file are lost', { 
       'salvarRecuperacaoSala',
       ({ token }) => token !== tokenBeforeLifeChange
     );
-    const lifeAt39 = waitForEvent(
+    const lifeAt35 = waitForEvent(
       sockets[0],
       'atualizarLobby',
-      (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === 39
+      (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === 35
     );
-    sockets[0].emit('alterarVida', { codigo, delta: -1 });
-    const [changedLobby] = await Promise.all([lifeAt39, recoveryAfterLife]);
+    sockets[0].emit('alterarVida', { codigo, delta: -5 });
+    const [changedLobby] = await Promise.all([lifeAt35, recoveryAfterLife]);
     assert.equal(changedLobby.combatLog[0].playerName, names[0]);
-    assert.equal(changedLobby.combatLog[0].delta, -1);
-    assert.equal(changedLobby.combatLog[0].lifeAfter, 39);
+    assert.equal(changedLobby.combatLog[0].delta, -5);
+    assert.equal(changedLobby.combatLog[0].lifeAfter, 35);
     assert.ok(latestRecoveryToken);
 
     const tokenAfterLifeChange = latestRecoveryToken;
@@ -157,13 +157,13 @@ test('an active match recovers after the server and ephemeral file are lost', { 
       'salvarRecuperacaoSala',
       ({ token }) => token !== tokenAfterUndo
     );
-    const lifeBackAt39 = waitForEvent(
+    const lifeBackAt35 = waitForEvent(
       sockets[0],
       'atualizarLobby',
-      (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === 39
+      (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === 35
     );
-    sockets[0].emit('alterarVida', { codigo, delta: -1 });
-    await Promise.all([lifeBackAt39, recoveryAfterSecondLifeChange]);
+    sockets[0].emit('alterarVida', { codigo, delta: -5 });
+    await Promise.all([lifeBackAt35, recoveryAfterSecondLifeChange]);
 
     await stopServer(serverProcess);
     sockets.forEach((socket) => socket.disconnect());
@@ -202,7 +202,7 @@ test('an active match recovers after the server and ephemeral file are lost', { 
     const upgradedLobby = waitForEvent(
       recoveredHost,
       'atualizarLobby',
-      (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === 39
+      (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === 35
     );
     const playerBEntered = waitForEvent(recoveredPlayerB, 'entradaComSucesso');
     recoveredPlayerB.emit('entrarSala', {
@@ -214,13 +214,13 @@ test('an active match recovers after the server and ephemeral file are lost', { 
 
     await Promise.all([upgradedLobby, playerBEntered]);
 
-    const lifeAt38 = waitForEvent(
+    const lifeAt34 = waitForEvent(
       recoveredHost,
       'atualizarLobby',
-      (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === 38
+      (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === 34
     );
     recoveredHost.emit('alterarVida', { codigo, delta: -1 });
-    await lifeAt38;
+    await lifeAt34;
   } finally {
     sockets.forEach((socket) => socket.disconnect());
     await stopServer(serverProcess);
