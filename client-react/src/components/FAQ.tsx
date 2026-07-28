@@ -1,20 +1,21 @@
 import { useState, type CSSProperties } from 'react';
 import {
   ChevronDown,
+  BookOpen,
   Crown,
-  HeartPulse,
-  Shield,
   Swords,
   Target,
   type LucideIcon,
 } from 'lucide-react';
 import './FAQ.css';
 
-type GuideTab = 'kingdom' | 'magic-war' | 'commander';
+type GuideTab = 'kingdom' | 'magic-war' | 'rules';
 
 interface GuideItem {
   title: string;
-  description: string;
+  description?: string;
+  victory?: string;
+  defeat?: string;
   accent?: string;
 }
 
@@ -32,43 +33,49 @@ const GUIDE_TABS: Array<{
 }> = [
   { id: 'kingdom', label: 'Kingdom', icon: Crown },
   { id: 'magic-war', label: 'Magic War', icon: Target },
-  { id: 'commander', label: 'Commander', icon: HeartPulse },
+  { id: 'rules', label: 'Regras', icon: BookOpen },
 ];
 
 const GUIDE_CONTENT: Record<GuideTab, GuideContent> = {
   kingdom: {
     eyebrow: '5 a 7 jogadores',
     title: 'Papéis secretos',
-    summary: 'Cada jogador recebe um papel e vence ao cumprir o objetivo indicado na própria tela.',
+    summary: 'Há sempre um Rei, um Cavaleiro e dois Assassinos. Os outros papéis dependem do modo escolhido no lobby.',
     items: [
       {
         title: 'Rei',
-        description: 'Proteja a coroa. O Rei vence quando os dois Assassinos forem eliminados.',
+        victory: 'Os dois Assassinos forem eliminados.',
+        defeat: 'Você for eliminado. Se o Usurpador der o último golpe, ele assume a coroa e a partida continua.',
         accent: '#f4c542',
       },
       {
         title: 'Cavaleiro',
-        description: 'Proteja o Rei. Quando o Rei vence, o Cavaleiro vence junto.',
+        victory: 'O Rei vencer. Sua missão é mantê-lo vivo.',
+        defeat: 'O Rei perder a partida.',
         accent: '#72a7e8',
       },
       {
         title: 'Assassinos',
-        description: 'Eliminem o Rei. A vitória é imediata, exceto quando o último golpe for do Usurpador.',
+        victory: 'O Rei for eliminado por qualquer jogador que não seja o Usurpador.',
+        defeat: 'Os dois Assassinos forem eliminados.',
         accent: '#e45f68',
       },
       {
         title: 'Usurpador',
-        description: 'Elimine o Rei pessoalmente. Você assume a coroa, ganha 10 de vida e passa a jogar como o novo Rei.',
+        victory: 'Você der o último golpe no Rei, assumir a coroa e depois eliminar os Assassinos.',
+        defeat: 'Você for eliminado antes de assumir a coroa ou outra equipe encerrar a partida.',
         accent: '#b985e8',
       },
       {
         title: 'Coringa',
-        description: 'Vença sendo o primeiro eliminado. Se isso não acontecer, elimine alguém para roubar o papel e o objetivo dessa pessoa, exceto o Rei.',
+        victory: 'Você for o primeiro eliminado. Se não for, ainda pode eliminar alguém, assumir o papel dessa pessoa e cumprir o novo objetivo.',
+        defeat: 'A partida terminar antes de você cumprir um desses objetivos. O papel do Rei não pode ser roubado.',
         accent: '#e98ebc',
       },
       {
         title: 'Caçador',
-        description: 'Seja responsável por duas eliminações que não sejam a do Rei.',
+        victory: 'Você der o último golpe em dois jogadores que não sejam o Rei.',
+        defeat: 'Você for eliminado antes da segunda presa. Se matar o Rei, a vitória fica com os Assassinos.',
         accent: '#61c49a',
       },
     ],
@@ -76,54 +83,59 @@ const GUIDE_CONTENT: Record<GuideTab, GuideContent> = {
   'magic-war': {
     eyebrow: '3 a 7 jogadores',
     title: 'Caçada por cores',
-    summary: 'Sua cor é pública, mas somente você conhece a cor que precisa eliminar.',
+    summary: 'Todo jogador tem uma cor visível e recebe, em segredo, a cor que precisa caçar.',
     items: [
       {
         title: 'Escolha das cores',
-        description: 'Cada pessoa pode reservar uma cor no lobby. Quem não escolher recebe automaticamente uma cor disponível.',
+        description: 'Cada pessoa pode escolher sua cor antes do sorteio. Quem não escolher recebe uma das cores que sobraram.',
       },
       {
         title: 'Missão principal',
-        description: 'Você vence imediatamente se der o último golpe no jogador da cor mostrada como seu alvo.',
+        victory: 'Você der o último golpe no jogador da cor que recebeu como alvo.',
+        defeat: 'Você for eliminado antes de cumprir sua missão.',
       },
       {
         title: 'Alvo eliminado por outro',
-        description: 'Se outra pessoa eliminar seu alvo, sua missão muda: você precisa ser o último sobrevivente.',
+        description: 'Se outra pessoa eliminar seu alvo, você não recebe um novo alvo. A partir daí, só vence se for o último sobrevivente.',
       },
       {
         title: 'Registro da eliminação',
-        description: 'A vítima informa quem deu o último golpe. Se o celular dela estiver indisponível, o host pode registrar por ela.',
+        description: 'Quem foi eliminado informa quem deu o último golpe. Se não puder fazer isso, o host registra a eliminação.',
       },
       {
         title: 'Informação permanente',
-        description: 'As cores permanecem visíveis ao lado dos jogadores durante toda a partida.',
+        description: 'As cores são públicas durante toda a partida. O alvo de cada pessoa continua secreto.',
       },
     ],
   },
-  commander: {
-    eyebrow: 'Contador compartilhado',
-    title: 'Vida e comandante',
-    summary: 'Todos acompanham a vida da mesa em tempo real, sem precisar de um segundo aplicativo.',
+  rules: {
+    eyebrow: 'Regras da partida',
+    title: 'Vida e eliminação',
+    summary: 'Estas condições valem durante as partidas organizadas pelo MeuKingdom.',
     items: [
       {
         title: 'Vida inicial',
-        description: 'Cada jogador começa com 40 de vida. Os controles rápidos alteram 1 ou 5 pontos por toque.',
+        description: 'Todos começam com 40 de vida. O jogador que recebe o papel de Rei começa com 50.',
+      },
+      {
+        title: 'Zero de vida',
+        description: 'Ao chegar a zero de vida, o jogador é eliminado e deve informar quem deu o último golpe.',
       },
       {
         title: 'Dano de comandante',
-        description: 'Cada ponto de dano de comandante também reduz a vida. Ao chegar a 21 do mesmo comandante, registre a eliminação.',
-      },
-      {
-        title: 'Comandante roubado',
-        description: 'Seu próprio nome aparece entre os comandantes porque um adversário pode controlar sua criatura e causar dano com ela.',
+        description: 'Ao receber 21 pontos de um mesmo comandante, o jogador é eliminado. Esse dano também reduz a vida normalmente.',
       },
       {
         title: 'Partner',
-        description: 'Adicione o segundo comandante quando estiver usando Partner. O dano de cada comandante é acompanhado separadamente.',
+        description: 'Quando uma dupla de comandantes usa Partner, o dano de cada comandante é contado separadamente.',
       },
       {
-        title: 'Conferência e correção',
-        description: 'Toque no nome de alguém para conferir os danos recebidos. A última alteração pode ser desfeita.',
+        title: 'Último golpe',
+        description: 'A pessoa responsável pelo último golpe é quem recebe a eliminação. Isso pode definir a vitória de um papel ou mudar um objetivo.',
+      },
+      {
+        title: 'Depois da eliminação',
+        description: 'O jogador eliminado deixa o combate, mas continua na sala acompanhando o restante da partida.',
       },
     ],
   },
@@ -196,8 +208,19 @@ export function FAQ() {
                   <ChevronDown size={19} aria-hidden="true" />
                 </button>
                 <div id={`${itemId}-content`} className="game-guide-answer" hidden={!isOpen}>
-                  <Shield size={16} aria-hidden="true" />
-                  <p>{item.description}</p>
+                  {item.description && <p>{item.description}</p>}
+                  {item.victory && (
+                    <p>
+                      <span className="rule-label victory">Você vence quando</span>
+                      {item.victory}
+                    </p>
+                  )}
+                  {item.defeat && (
+                    <p>
+                      <span className="rule-label defeat">Você perde quando</span>
+                      {item.defeat}
+                    </p>
+                  )}
                 </div>
               </article>
             );

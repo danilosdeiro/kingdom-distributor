@@ -92,8 +92,8 @@ test('an active match recovers after the server and ephemeral file are lost', { 
     serverProcess = startServer(port, stateFile);
     await waitForHealth(url, 0);
 
-    const ids = ['host-id', 'player-b-id', 'player-c-id'];
-    const names = ['Host', 'Player B', 'Player C'];
+    const ids = ['host-id', 'player-b-id', 'player-c-id', 'player-d-id', 'player-e-id'];
+    const names = ['Host', 'Player B', 'Player C', 'Player D', 'Player E'];
     sockets = ids.map(() => connect(url));
     await Promise.all(sockets.map((socket) => waitForEvent(socket, 'connect')));
 
@@ -119,17 +119,28 @@ test('an active match recovers after the server and ephemeral file are lost', { 
       });
     }));
 
-    const magicWarLobby = waitForEvent(
+    const roles = sockets.map((socket) => waitForEvent(socket, 'seuPapel'));
+    const startedLobby = waitForEvent(
       sockets[0],
       'atualizarLobby',
-      (data) => data.modoDeJogo === 'magic-war'
+      (data) => data.status === 'em_jogo'
     );
-    sockets[0].emit('mudarModoDeJogo', { codigo, novoModo: 'magic-war' });
-    await magicWarLobby;
-
-    const roles = sockets.map((socket) => waitForEvent(socket, 'seuPapel'));
     sockets[0].emit('distribuirPapeis', { codigo });
-    await Promise.all(roles);
+    const [assignedRoles, initialLobby] = await Promise.all([
+      Promise.all(roles),
+      startedLobby,
+    ]);
+
+    const kingIndex = assignedRoles.findIndex((role) => role.papel === 'Rei');
+    assert.notEqual(kingIndex, -1);
+    assert.equal(
+      initialLobby.jogadores.find((player) => player.id === ids[kingIndex]).vida,
+      50
+    );
+    initialLobby.jogadores
+      .filter((player) => player.id !== ids[kingIndex])
+      .forEach((player) => assert.equal(player.vida, 40));
+    const hostInitialLife = initialLobby.jogadores.find((player) => player.id === ids[0]).vida;
 
     const invalidLifeChange = waitForEvent(
       sockets[0],
@@ -146,16 +157,16 @@ test('an active match recovers after the server and ephemeral file are lost', { 
       'salvarRecuperacaoSala',
       ({ token }) => token !== tokenBeforeLifeChange
     );
-    const lifeAt35 = waitForEvent(
+    const lifeAfterFirstChange = waitForEvent(
       sockets[0],
       'atualizarLobby',
-      (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === 35
+      (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === hostInitialLife - 5
     );
     sockets[0].emit('alterarVida', { codigo, delta: -5 });
-    const [changedLobby] = await Promise.all([lifeAt35, recoveryAfterLife]);
+    const [changedLobby] = await Promise.all([lifeAfterFirstChange, recoveryAfterLife]);
     assert.equal(changedLobby.combatLog[0].playerName, names[0]);
     assert.equal(changedLobby.combatLog[0].delta, -5);
-    assert.equal(changedLobby.combatLog[0].lifeAfter, 35);
+    assert.equal(changedLobby.combatLog[0].lifeAfter, hostInitialLife - 5);
     assert.ok(latestRecoveryToken);
 
     const tokenAfterLifeChange = latestRecoveryToken;
@@ -167,7 +178,7 @@ test('an active match recovers after the server and ephemeral file are lost', { 
     const lifeRestored = waitForEvent(
       sockets[0],
       'atualizarLobby',
-      (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === 40
+      (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === hostInitialLife
     );
     const undoConfirmed = waitForEvent(sockets[0], 'alteracaoCombateDesfeita');
     sockets[0].emit('desfazerUltimaAlteracaoCombate', { codigo });
@@ -181,13 +192,13 @@ test('an active match recovers after the server and ephemeral file are lost', { 
       'salvarRecuperacaoSala',
       ({ token }) => token !== tokenAfterUndo
     );
-    const lifeBackAt35 = waitForEvent(
+    const lifeAfterSecondChange = waitForEvent(
       sockets[0],
       'atualizarLobby',
-      (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === 35
+      (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === hostInitialLife - 5
     );
     sockets[0].emit('alterarVida', { codigo, delta: -5 });
-    await Promise.all([lifeBackAt35, recoveryAfterSecondLifeChange]);
+    await Promise.all([lifeAfterSecondChange, recoveryAfterSecondLifeChange]);
 
     await stopServer(serverProcess);
     sockets.forEach((socket) => socket.disconnect());
@@ -216,8 +227,8 @@ test('an active match recovers after the server and ephemeral file are lost', { 
     });
 
     const [staleLobby] = await Promise.all([staleRecoveredLobby, recoveredNotice, enteredAgain]);
-    assert.equal(staleLobby.jogadores.find((player) => player.id === ids[0]).vida, 40);
-    assert.equal(staleLobby.jogadores.length, 3);
+    assert.equal(staleLobby.jogadores.find((player) => player.id === ids[0]).vida, hostInitialLife);
+    assert.equal(staleLobby.jogadores.length, 5);
 
     const recoveredPlayerB = connect(url);
     sockets.push(recoveredPlayerB);
@@ -226,7 +237,7 @@ test('an active match recovers after the server and ephemeral file are lost', { 
     const upgradedLobby = waitForEvent(
       recoveredHost,
       'atualizarLobby',
-      (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === 35
+      (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === hostInitialLife - 5
     );
     const playerBEntered = waitForEvent(recoveredPlayerB, 'entradaComSucesso');
     recoveredPlayerB.emit('entrarSala', {
@@ -238,13 +249,13 @@ test('an active match recovers after the server and ephemeral file are lost', { 
 
     await Promise.all([upgradedLobby, playerBEntered]);
 
-    const lifeAt34 = waitForEvent(
+    const lifeAfterRecoveryChange = waitForEvent(
       recoveredHost,
       'atualizarLobby',
-      (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === 34
+      (data) => data.jogadores.find((player) => player.id === ids[0])?.vida === hostInitialLife - 6
     );
     recoveredHost.emit('alterarVida', { codigo, delta: -1 });
-    await lifeAt34;
+    await lifeAfterRecoveryChange;
   } finally {
     sockets.forEach((socket) => socket.disconnect());
     await stopServer(serverProcess);

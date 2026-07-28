@@ -2,8 +2,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   DEFAULT_LIFE,
+  KING_LIFE,
   MAGIC_WAR_COLORS,
   addPartnerCommander,
+  applyLifeBonus,
   adjustCommanderDamage,
   adjustPlayerLife,
   canStartGame,
@@ -136,8 +138,12 @@ test('Magic War lets players reserve only available colors', () => {
   assert.equal(setMagicWarColor(room, 'a', 'unknown'), false);
 });
 
-test('combat state starts at 40 life and resets commander damage', () => {
+test('combat state gives 50 life to the King and 40 to other players', () => {
   const room = {
+    papeisDesignados: [
+      { id: 'a', papel: 'Rei' },
+      { id: 'b', papel: 'Cavaleiro' },
+    ],
     jogadores: [
       { id: 'a', vida: 3, danoComandante: { b: 20 } },
       { id: 'b' },
@@ -147,11 +153,20 @@ test('combat state starts at 40 life and resets commander damage', () => {
   initializeCombatState(room);
 
   assert.deepEqual(room.jogadores, [
-    { id: 'a', vida: DEFAULT_LIFE, danoComandante: {}, commanderCount: 1 },
+    { id: 'a', vida: KING_LIFE, danoComandante: {}, commanderCount: 1 },
     { id: 'b', vida: DEFAULT_LIFE, danoComandante: {}, commanderCount: 1 },
   ]);
   assert.deepEqual(room.combatHistory, []);
   assert.equal(room.combatSequence, 0);
+});
+
+test('a positive life bonus is applied when the Usurper becomes King', () => {
+  const player = { id: 'usurper', vida: 17 };
+
+  assert.equal(applyLifeBonus(player, 10), true);
+  assert.equal(player.vida, 27);
+  assert.equal(applyLifeBonus(player, 0), false);
+  assert.equal(applyLifeBonus(null, 10), false);
 });
 
 test('players can adjust only valid life and commander damage steps', () => {
