@@ -68,8 +68,8 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(DISMISSED_UPDATE_KEY, String(update.versionCode));
       setDismissedVersionCode(update.versionCode);
     },
-    installUpdate: async () => {
-      if (update) await openAppUpdate(update);
+    installUpdate: async (onProgress) => {
+      if (update) await openAppUpdate(update, onProgress);
     },
   }), [dismissedVersionCode, installedApp, update]);
 
