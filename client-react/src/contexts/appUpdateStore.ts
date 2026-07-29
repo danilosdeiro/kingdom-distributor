@@ -6,7 +6,7 @@ export interface AppUpdateContextValue {
   update: AppUpdate | null;
   showNotice: boolean;
   dismissUpdate: () => void;
-  installUpdate: () => Promise<void>;
+  installUpdate: (onProgress?: (percent: number) => void) => Promise<void>;
 }
 
 export const AppUpdateContext = createContext<AppUpdateContextValue | null>(null);

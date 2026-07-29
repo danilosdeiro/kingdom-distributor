@@ -58,6 +58,22 @@
   font-weight: 800;
 }
 
+.app-update-action:disabled,
+.app-update-dismiss:disabled {
+  cursor: wait;
+  opacity: 0.8;
+}
+
+.app-update-spinner {
+  animation: app-update-spin 0.9s linear infinite;
+}
+
+@keyframes app-update-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .app-update-dismiss {
   width: 40px;
   height: 40px;

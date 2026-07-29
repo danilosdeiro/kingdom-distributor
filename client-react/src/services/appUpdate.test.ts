@@ -30,6 +30,7 @@ describe('app update manifest', () => {
     {},
     { versionCode: 17.5, versionName: '1.16', downloadUrl: officialDownload },
     { versionCode: 17, versionName: 1.16, downloadUrl: officialDownload },
+    { versionCode: 17, versionName: '../1.16', downloadUrl: officialDownload },
     { versionCode: 17, versionName: '1.16', downloadUrl: 'https://example.com/app.apk' },
   ])('rejects a malformed manifest', (manifest) => {
     expect(appUpdateTesting.parseUpdateManifest(manifest)).toBeNull();
