@@ -1,9 +1,32 @@
 import { socket } from './socket';
 import { getPlayerId } from './playerIdentity';
 import { getRoomRecoveryToken } from './roomRecovery';
-import { beginRoomSync, isRoomReady, isRoomSyncing } from './roomConnection';
+import {
+  beginRoomSync,
+  isRoomReady,
+  isRoomSyncing,
+  markRoomConnectionError,
+} from './roomConnection';
 
-let waitingForConnection = false;
+const CONNECTION_WAIT_TIMEOUT_MS = 70000;
+
+let connectionHandler: (() => void) | null = null;
+let connectionTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function clearConnectionWait() {
+  if (connectionHandler) {
+    socket.off('connect', connectionHandler);
+    connectionHandler = null;
+  }
+  if (connectionTimeout) {
+    clearTimeout(connectionTimeout);
+    connectionTimeout = null;
+  }
+}
+
+export function cancelSavedRoomRejoin() {
+  clearConnectionWait();
+}
 
 export function rejoinSavedRoom(force = false) {
   const codigo = localStorage.getItem('salaAtual');
@@ -11,13 +34,21 @@ export function rejoinSavedRoom(force = false) {
 
   if (!codigo || !nome) return false;
   if (!socket.connected) {
-    if (!waitingForConnection) {
-      waitingForConnection = true;
-      socket.once('connect', () => {
-        waitingForConnection = false;
-        rejoinSavedRoom();
-      });
+    beginRoomSync(codigo);
+
+    if (!connectionHandler) {
+      connectionHandler = () => {
+        clearConnectionWait();
+        rejoinSavedRoom(force);
+      };
+      socket.once('connect', connectionHandler);
+      connectionTimeout = setTimeout(() => {
+        clearConnectionWait();
+        markRoomConnectionError();
+      }, CONNECTION_WAIT_TIMEOUT_MS);
     }
+
+    socket.connect();
     return true;
   }
   if (!force && (isRoomReady(codigo) || isRoomSyncing(codigo))) return true;

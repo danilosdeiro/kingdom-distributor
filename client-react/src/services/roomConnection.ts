@@ -52,6 +52,13 @@ export function beginRoomSync(codigo?: string) {
   syncTimeout = setTimeout(() => setState('room-error'), 12000);
 }
 
+export function markRoomConnectionError() {
+  clearSyncTimeout();
+  joinedRoomCode = null;
+  joinedSocketId = null;
+  setState('room-error');
+}
+
 export function markRoomConnectionLeft() {
   clearSyncTimeout();
   joinedRoomCode = null;

@@ -230,6 +230,39 @@ button {
   box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
 }
 
+.reconnect-room-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-color: #34c759;
+  color: #34c759;
+}
+
+.reconnect-room-button:disabled {
+  cursor: wait;
+  opacity: 0.8;
+}
+
+.reconnect-spinner {
+  flex: 0 0 auto;
+  animation: reconnect-spin 0.9s linear infinite;
+}
+
+.reconnect-room-status {
+  margin: 10px 4px 0;
+  color: #d6d6d6;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+@keyframes reconnect-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .main-logo-link {
   display: inline-block;
   line-height: 0;

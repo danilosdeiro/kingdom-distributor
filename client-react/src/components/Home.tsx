@@ -1,11 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, Link, useParams } from 'react-router-dom';
+import { LoaderCircle } from 'lucide-react';
 import { socket } from '../services/socket';
 import { gameState } from '../services/gameState';
 import { getPlayerId } from '../services/playerIdentity';
-import { rejoinSavedRoom } from '../services/rejoinRoom';
+import { cancelSavedRoomRejoin, rejoinSavedRoom } from '../services/rejoinRoom';
 import { clearRoomSession } from '../services/roomSession';
-import { beginRoomSync } from '../services/roomConnection';
+import {
+  beginRoomSync,
+  subscribeToRoomConnection,
+} from '../services/roomConnection';
 import { showSocketError, type SocketErrorPayload } from '../services/socketError';
 import { toast } from 'react-hot-toast';
 import './Home.css';
@@ -28,8 +32,20 @@ export function Home() {
   const [codigoSala, setCodigoSala] = useState('');
   const [temPapelSalvo, setTemPapelSalvo] = useState(false);
   const [temSalaSalva, setTemSalaSalva] = useState(false);
+  const [reconectando, setReconectando] = useState(false);
+  const [servidorIniciando, setServidorIniciando] = useState(false);
+  const serverStartingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const navigate = useNavigate();
+
+  const encerrarEsperaDeReconexao = useCallback(() => {
+    if (serverStartingTimer.current) {
+      clearTimeout(serverStartingTimer.current);
+      serverStartingTimer.current = null;
+    }
+    setReconectando(false);
+    setServidorIniciando(false);
+  }, []);
 
   useEffect(() => {
     const nomeSalvo = localStorage.getItem('meuNome');
@@ -59,6 +75,7 @@ export function Home() {
     };
 
     const handleEntradaComSucesso = () => {
+      encerrarEsperaDeReconexao();
       const salaDestino = localStorage.getItem('salaAtual');
       if (salaDestino) {
         navigate(`/lobby/${salaDestino}`, { state: { entrouNaSala: true } });
@@ -72,6 +89,7 @@ export function Home() {
     };
 
     const handleErro = (error: SocketErrorPayload) => {
+      encerrarEsperaDeReconexao();
       showSocketError(error);
       const { mensagem } = error;
       if (mensagem.toLowerCase().includes('sala nao encontrada')) {
@@ -85,14 +103,20 @@ export function Home() {
     socket.on('entradaComSucesso', handleEntradaComSucesso);
     socket.on('seuPapel', handleSeuPapel);
     socket.on('erro', handleErro);
+    const unsubscribeConnection = subscribeToRoomConnection((status) => {
+      if (status === 'room-error') encerrarEsperaDeReconexao();
+    });
 
     return () => {
+      encerrarEsperaDeReconexao();
+      cancelSavedRoomRejoin();
+      unsubscribeConnection();
       socket.off('salaCriada', handleSalaCriada);
       socket.off('entradaComSucesso', handleEntradaComSucesso);
       socket.off('seuPapel', handleSeuPapel);
       socket.off('erro', handleErro);
     };
-  }, [navigate]);
+  }, [encerrarEsperaDeReconexao, navigate]);
 
   const handleReconectar = () => {
     const codigo = localStorage.getItem('salaAtual');
@@ -101,7 +125,15 @@ export function Home() {
     if (codigo && nomeSalvo) {
       setCodigoSala(codigo);
       setNome(nomeSalvo);
-      rejoinSavedRoom(true);
+      setReconectando(true);
+      setServidorIniciando(false);
+      serverStartingTimer.current = setTimeout(() => {
+        setServidorIniciando(true);
+      }, 8000);
+
+      if (!rejoinSavedRoom(true)) {
+        encerrarEsperaDeReconexao();
+      }
     }
   };
 
@@ -168,9 +200,21 @@ export function Home() {
 
         {temSalaSalva && (
           <div className="card last-role-card" style={{ marginBottom: '20px' }}>
-            <button className="last-role-button" onClick={handleReconectar} style={{ borderColor: '#34c759', color: '#34c759' }}>
-              Reconectar à Última Sala
+            <button
+              className="last-role-button reconnect-room-button"
+              onClick={handleReconectar}
+              disabled={reconectando}
+            >
+              {reconectando && <LoaderCircle size={19} className="reconnect-spinner" aria-hidden="true" />}
+              {reconectando ? 'Procurando sala...' : 'Reconectar à Última Sala'}
             </button>
+            {reconectando && (
+              <p className="reconnect-room-status" role="status" aria-live="polite">
+                {servidorIniciando
+                  ? 'O servidor está iniciando. Isso pode levar até um minuto.'
+                  : 'Conectando ao servidor...'}
+              </p>
+            )}
           </div>
         )}
 
