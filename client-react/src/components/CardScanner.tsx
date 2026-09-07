@@ -12,6 +12,7 @@ import {
   getCardImage,
   getCardOracleText,
   getCardPrice,
+  getLigaMagicUrl,
   getScryfallCard,
   getScryfallCardByName,
   searchScryfallNames,
@@ -246,6 +247,7 @@ export function CardScanner() {
               </dl>
               <div className="recognized-card-actions">
                 <a href={card.scryfall_uri} target="_blank" rel="noreferrer"><ExternalLink size={17} />Ver no Scryfall</a>
+                <a href={getLigaMagicUrl(card.name)} target="_blank" rel="noreferrer"><ExternalLink size={17} />Ver na LigaMagic</a>
                 <button type="button" onClick={() => setManualOpen(true)}>Não é essa carta?</button>
               </div>
             </div>

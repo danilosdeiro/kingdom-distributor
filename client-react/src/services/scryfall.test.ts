@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getCardImage, getCardOracleText, getCardPrice, getScryfallCard } from './scryfall';
+import { getCardImage, getCardOracleText, getCardPrice, getLigaMagicUrl, getScryfallCard } from './scryfall';
 
 const card = {
   id: 'card-1',
@@ -34,5 +34,11 @@ describe('Scryfall service', () => {
     expect(getCardImage(card)).toContain('card.jpg');
     expect(getCardOracleText(card)).toContain('Add');
     expect(getCardPrice(card)).toBe('$1.25');
+  });
+
+  it('creates a safe LigaMagic search URL', () => {
+    expect(getLigaMagicUrl('Fire // Ice')).toBe(
+      'https://www.ligamagic.com.br/?view=cards%2Fcard&card=Fire+%2F%2F+Ice',
+    );
   });
 });
