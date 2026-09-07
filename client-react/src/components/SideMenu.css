@@ -102,3 +102,22 @@
   font-weight: 800;
   cursor: pointer;
 }
+
+.sidemenu-actions {
+  padding: 14px 20px 0;
+}
+
+.sidemenu-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid rgba(88, 201, 135, 0.48);
+  border-radius: 6px;
+  background: rgba(88, 201, 135, 0.1);
+  color: #8bd9ab;
+  font-weight: 800;
+  cursor: pointer;
+}

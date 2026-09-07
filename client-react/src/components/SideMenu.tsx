@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { Download, X } from 'lucide-react';
+import { Download, ScanLine, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAppUpdate } from '../hooks/useAppUpdate';
 import './SideMenu.css';
 import { FAQ } from './FAQ';
@@ -11,6 +12,7 @@ interface SideMenuProps {
 }
 
 export function SideMenu({ isOpen, onClose }: SideMenuProps) {
+  const navigate = useNavigate();
   const { installedApp, update, installUpdate } = useAppUpdate();
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -101,6 +103,13 @@ export function SideMenu({ isOpen, onClose }: SideMenuProps) {
           )}
         </div>
       
+        <nav className="sidemenu-actions" aria-label="Ferramentas">
+          <button type="button" onClick={() => { onClose(); navigate('/scanner'); }}>
+            <ScanLine size={20} aria-hidden="true" />
+            Scanner de Cartas
+          </button>
+        </nav>
+
         <FAQ />
       </div>
     </div>

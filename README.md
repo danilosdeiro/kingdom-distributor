@@ -54,6 +54,14 @@ CLIENT_ORIGINS=http://localhost:5173,https://meukingdom.vercel.app,https://local
 ### Frontend
 
 - `VITE_BACKEND_URL`: URL pública do backend Socket.IO.
+- `VITE_COLLECTOR_VISION_URL`: origem dos modelos e do motor web do scanner de cartas.
+- `VITE_CARD_SCANNER_DEBUG`: use `true` para exibir FPS e diagnósticos do scanner.
+
+## Scanner de cartas
+
+A rota `/scanner` executa o reconhecimento no próprio navegador ou aparelho. O vídeo não é
+enviado ao backend. Na primeira utilização, o CollectorVision baixa modelos e catálogo e os
+mantém em cache no dispositivo. Consulte `THIRD_PARTY_NOTICES.md` para licenças e atribuições.
 
 ## Scripts úteis
 
