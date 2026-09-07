@@ -47,3 +47,11 @@
   font: inherit;
   cursor: pointer;
 }
+
+.app-layout:has(.scanner-page) .connection-status {
+  top: calc(max(14px, env(safe-area-inset-top)) + 58px);
+}
+
+.app-layout:has(> .connection-status):has(.scanner-page) .scanner-content {
+  margin-top: 64px;
+}

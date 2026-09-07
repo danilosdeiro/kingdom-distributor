@@ -8,6 +8,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { Home } from './components/Home.tsx';
 import { Lobby } from './components/Lobby.tsx';
 import { RoleView } from './components/RoleView.tsx';
+import { CardScanner } from './components/CardScanner.tsx';
 
 const router = createBrowserRouter([
   {
@@ -23,6 +24,10 @@ const router = createBrowserRouter([
         // Esta é a rota que captura o código (ex: /ABCD)
         path: ':codigoConvite', 
         element: <Home />,
+      },
+      {
+        path: 'scanner',
+        element: <CardScanner />,
       },
       {
         path: 'lobby/:codigo',
