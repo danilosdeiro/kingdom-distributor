@@ -93,3 +93,8 @@ export function getCardPrice(card: ScryfallCard) {
   if (card.prices?.eur) return `€${card.prices.eur}`;
   return null;
 }
+
+export function getLigaMagicUrl(cardName: string) {
+  const query = new URLSearchParams({ view: 'cards/card', card: cardName });
+  return `https://www.ligamagic.com.br/?${query.toString()}`;
+}
