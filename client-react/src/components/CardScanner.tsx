@@ -294,7 +294,6 @@ export function CardScanner() {
           </section>
         )}
 
-        <p className="scanner-attribution">Reconhecimento por <a href="https://github.com/HanClinto/CollectorVision" target="_blank" rel="noreferrer">CollectorVision</a> · Dados por Scryfall</p>
       </main>
 
       {manualOpen && (

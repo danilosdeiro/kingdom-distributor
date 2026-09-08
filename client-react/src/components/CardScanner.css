@@ -276,9 +276,6 @@
 .scanner-history-list strong,
 .scanner-history-list small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scanner-history-list small { margin-top: 3px; color: #9fa7ad; }
-.scanner-attribution { margin: 8px 0 0; color: #858e95; font-size: 0.72rem; text-align: center; }
-.scanner-attribution a { color: #bfc6ca; }
-
 .scanner-search-overlay { position: fixed; inset: 0; z-index: 1300; display: flex; align-items: end; }
 .scanner-search-backdrop { position: absolute; inset: 0; width: 100%; border: 0; border-radius: 0; background: rgba(0, 0, 0, 0.72); }
 .scanner-search-dialog { position: relative; width: 100%; max-height: 78dvh; overflow-y: auto; padding: 20px 18px calc(24px + env(safe-area-inset-bottom)); border-radius: 8px 8px 0 0; background: #1b1e21; box-sizing: border-box; }
