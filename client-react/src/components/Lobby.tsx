@@ -112,9 +112,11 @@ const handleCompartilhar = () => {
     const handleErro = (error: SocketErrorPayload) => showSocketError(error);
 
     const handleConnect = () => {
-      setMeuId(getPlayerId());
-      if (!rejoinSavedRoom()) {
-        socket.emit('solicitarDadosSala', codigo);
+      const playerId = getPlayerId();
+      setMeuId(playerId);
+      rejoinSavedRoom();
+      if (socket.connected) {
+        socket.emit('solicitarDadosSala', { codigo, playerId });
       }
     };
     

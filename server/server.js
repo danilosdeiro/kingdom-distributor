@@ -499,7 +499,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('solicitarDadosSala', (codigo) => {
+  socket.on('solicitarDadosSala', (request) => {
+    const codigo = typeof request === 'string' ? request : request?.codigo;
+    const playerId = normalizePlayerId(typeof request === 'string' ? null : request?.playerId);
     const codigoSala = normalizeRoomCode(codigo);
     const sala = saloes[codigoSala];
 
@@ -507,10 +509,18 @@ io.on('connection', (socket) => {
       return emitSocketError(socket, 'Sala nao encontrada.');
     }
 
+    const jogador = sala.jogadores.find((player) => (
+      player.socketId === socket.id || (playerId && player.id === playerId)
+    ));
+    if (!jogador) {
+      return emitSocketError(socket, 'Jogador nao pertence a esta sala.');
+    }
+
     socket.join(codigoSala);
+    socket.data.roomCode = codigoSala;
+    socket.data.playerId = jogador.id;
     socket.emit('atualizarLobby', getLobbyPayload(sala));
 
-    const jogador = sala.jogadores.find((player) => player.socketId === socket.id);
     const assignedRole = sala.papeisDesignados?.find((papel) => papel.id === jogador?.id);
     if (sala.status === 'em_jogo') {
       emitAssignedRole(socket, assignedRole);
