@@ -4,8 +4,8 @@ const DEFAULT_BACKEND_URL = import.meta.env.DEV
   ? "http://localhost:3000"
   : "https://kingdom-backend-zmdh.onrender.com";
 
-const URL = import.meta.env.VITE_BACKEND_URL || DEFAULT_BACKEND_URL;
-export const socket = io(URL, {
+export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || DEFAULT_BACKEND_URL;
+export const socket = io(BACKEND_URL, {
   reconnection: true,
   reconnectionAttempts: Infinity,
   reconnectionDelay: 1000,

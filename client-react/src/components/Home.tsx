@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, Link, useParams } from 'react-router-dom';
 import { LoaderCircle } from 'lucide-react';
 import { socket } from '../services/socket';
+import { ensureBackendReady } from '../services/backendAvailability';
 import { gameState } from '../services/gameState';
 import { getPlayerId } from '../services/playerIdentity';
 import { cancelSavedRoomRejoin, rejoinSavedRoom } from '../services/rejoinRoom';
@@ -34,6 +35,7 @@ export function Home() {
   const [temSalaSalva, setTemSalaSalva] = useState(false);
   const [reconectando, setReconectando] = useState(false);
   const [servidorIniciando, setServidorIniciando] = useState(false);
+  const [acaoPendente, setAcaoPendente] = useState<'criar' | 'entrar' | null>(null);
   const serverStartingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const navigate = useNavigate();
@@ -45,7 +47,25 @@ export function Home() {
     }
     setReconectando(false);
     setServidorIniciando(false);
+    setAcaoPendente(null);
   }, []);
+
+  const prepararServidor = useCallback(async (acao: 'criar' | 'entrar') => {
+    setAcaoPendente(acao);
+    setServidorIniciando(false);
+    serverStartingTimer.current = setTimeout(() => setServidorIniciando(true), 5000);
+
+    try {
+      await ensureBackendReady();
+      return true;
+    } catch (error) {
+      encerrarEsperaDeReconexao();
+      toast.error(error instanceof Error && error.message === 'offline'
+        ? 'Sem internet. Verifique sua conexão e tente novamente.'
+        : 'O servidor demorou para responder. Tente novamente.');
+      return false;
+    }
+  }, [encerrarEsperaDeReconexao]);
 
   useEffect(() => {
     const nomeSalvo = localStorage.getItem('meuNome');
@@ -70,6 +90,7 @@ export function Home() {
 
   useEffect(() => {
     const handleSalaCriada = ({ codigo, jogadores }: { codigo: string; jogadores: Jogador[] }) => {
+      encerrarEsperaDeReconexao();
       localStorage.setItem('salaAtual', codigo);
       navigate(`/lobby/${codigo}`, { state: { jogadoresIniciais: jogadores } });
     };
@@ -137,11 +158,13 @@ export function Home() {
     }
   };
 
-  const handleCriarSala = () => {
+  const handleCriarSala = async () => {
     if (!nome.trim()) {
       toast.error('Digite seu nome primeiro!');
       return;
     }
+
+    if (!(await prepararServidor('criar'))) return;
 
     clearRoomSession();
     setTemPapelSalvo(false);
@@ -151,13 +174,15 @@ export function Home() {
     socket.emit('criarSala', { nome: nome.trim(), playerId: getPlayerId() });
   };
 
-  const handleEntrarSala = () => {
+  const handleEntrarSala = async () => {
     if (!nome.trim() || !codigoSala.trim()) {
       toast.error('Preencha nome e código!');
       return;
     }
 
     const codigoLimpo = codigoSala.trim().toUpperCase();
+
+    if (!(await prepararServidor('entrar'))) return;
 
     clearRoomSession();
     setTemPapelSalvo(false);
@@ -242,10 +267,16 @@ export function Home() {
           <button
             className="primary-button"
             onClick={handleEntrarSala}
-            disabled={!nome.trim() || !codigoSala.trim()}
+            disabled={!nome.trim() || !codigoSala.trim() || acaoPendente !== null}
           >
-            Entrar na Sala
+            {acaoPendente === 'entrar' && <LoaderCircle size={19} className="reconnect-spinner" aria-hidden="true" />}
+            {acaoPendente === 'entrar' ? 'Entrando...' : 'Entrar na Sala'}
           </button>
+          {acaoPendente === 'entrar' && servidorIniciando && (
+            <p className="reconnect-room-status" role="status" aria-live="polite">
+              Preparando o servidor. A primeira conexão pode levar até um minuto.
+            </p>
+          )}
         </div>
 
         <div className="secondary-action">
@@ -253,10 +284,16 @@ export function Home() {
           <button
             className="secondary-button create-room-button"
             onClick={handleCriarSala}
-            disabled={!nome.trim()}
+            disabled={!nome.trim() || acaoPendente !== null}
           >
-            Crie uma Nova Sala
+            {acaoPendente === 'criar' && <LoaderCircle size={19} className="reconnect-spinner" aria-hidden="true" />}
+            {acaoPendente === 'criar' ? 'Criando sala...' : 'Crie uma Nova Sala'}
           </button>
+          {acaoPendente === 'criar' && servidorIniciando && (
+            <p className="reconnect-room-status" role="status" aria-live="polite">
+              Preparando o servidor. A primeira conexão pode levar até um minuto.
+            </p>
+          )}
         </div>
       </div>
     </div>

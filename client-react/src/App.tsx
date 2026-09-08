@@ -9,6 +9,7 @@ import { AppUpdateNotice } from './components/AppUpdateNotice';
 import { AppUpdateProvider } from './contexts/AppUpdateProvider';
 import { toast, Toaster } from 'react-hot-toast';
 import { socket } from './services/socket';
+import { warmBackend } from './services/backendAvailability';
 import { saveRoomRecovery } from './services/roomRecovery';
 import './App.css';
 
@@ -18,6 +19,10 @@ function App() {
   // Lógica de toggle: se o menu está aberto, fecha; se está fechado, abre.
   const toggleMenu = () => setIsMenuOpen((current) => !current);
   const closeMenu = () => setIsMenuOpen(false);
+
+  useEffect(() => {
+    warmBackend();
+  }, []);
 
   useEffect(() => {
     const handleSalvarRecuperacao = (data: { codigo: string; token: string }) => {
