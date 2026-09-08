@@ -10,7 +10,8 @@ export type RoomConnectionState =
 type Listener = (state: RoomConnectionState) => void;
 
 const listeners = new Set<Listener>();
-let state: RoomConnectionState = socket.connected ? 'ready' : 'connecting';
+let state: RoomConnectionState = 'ready';
+let trackingRoomConnection = false;
 let joinedRoomCode: string | null = null;
 let joinedSocketId: string | null = null;
 let syncTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -35,10 +36,12 @@ function markRoomReady(codigo?: string) {
   clearSyncTimeout();
   joinedRoomCode = (codigo || localStorage.getItem('salaAtual') || '').toUpperCase() || null;
   joinedSocketId = socket.id || null;
+  trackingRoomConnection = Boolean(joinedRoomCode);
   setState('ready');
 }
 
 export function beginRoomSync(codigo?: string) {
+  trackingRoomConnection = true;
   joinedRoomCode = codigo?.toUpperCase() || null;
   joinedSocketId = null;
   clearSyncTimeout();
@@ -53,6 +56,7 @@ export function beginRoomSync(codigo?: string) {
 }
 
 export function markRoomConnectionError() {
+  trackingRoomConnection = true;
   clearSyncTimeout();
   joinedRoomCode = null;
   joinedSocketId = null;
@@ -60,10 +64,11 @@ export function markRoomConnectionError() {
 }
 
 export function markRoomConnectionLeft() {
+  trackingRoomConnection = false;
   clearSyncTimeout();
   joinedRoomCode = null;
   joinedSocketId = null;
-  setState(socket.connected ? 'ready' : (isOnline() ? 'connecting' : 'offline'));
+  setState('ready');
 }
 
 export function isRoomReady(codigo: string) {
@@ -99,7 +104,7 @@ socket.on('disconnect', () => {
   clearSyncTimeout();
   joinedRoomCode = null;
   joinedSocketId = null;
-  setState(isOnline() ? 'connecting' : 'offline');
+  setState(trackingRoomConnection ? (isOnline() ? 'connecting' : 'offline') : 'ready');
 });
 
 socket.on('entradaComSucesso', (data?: { codigo?: string }) => markRoomReady(data?.codigo));
