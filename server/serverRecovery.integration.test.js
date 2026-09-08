@@ -119,6 +119,27 @@ test('an active match recovers after the server and ephemeral file are lost', { 
       });
     }));
 
+    const lateLobbySnapshot = waitForEvent(
+      sockets[4],
+      'atualizarLobby',
+      (data) => data.jogadores.length === 5
+    );
+    sockets[4].emit('solicitarDadosSala', { codigo, playerId: ids[4] });
+    const joinedLobby = await lateLobbySnapshot;
+    assert.deepEqual(joinedLobby.jogadores.map((player) => player.nome), names);
+
+    const outsider = connect(url);
+    sockets.push(outsider);
+    await waitForEvent(outsider, 'connect');
+    const outsiderRejected = waitForEvent(
+      outsider,
+      'erro',
+      (data) => data.mensagem === 'Jogador nao pertence a esta sala.'
+    );
+    outsider.emit('solicitarDadosSala', { codigo, playerId: 'outsider-id' });
+    await outsiderRejected;
+    sockets.pop().disconnect();
+
     const roles = sockets.map((socket) => waitForEvent(socket, 'seuPapel'));
     const startedLobby = waitForEvent(
       sockets[0],
