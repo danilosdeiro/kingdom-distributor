@@ -205,6 +205,35 @@
   color: #f0dcae;
 }
 
+.scanner-zoom-control {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 38px 42px;
+  align-items: center;
+  gap: 9px;
+  min-height: 52px;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 6px;
+  background: #1a1d20;
+}
+
+.scanner-zoom-control button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f0dcae;
+}
+
+.scanner-zoom-control button:disabled { color: #666d72; opacity: 0.55; }
+.scanner-zoom-control input { width: 100%; padding: 0; accent-color: #58c987; box-shadow: none; }
+.scanner-zoom-control span { color: #d7dcdf; font-size: 0.82rem; font-weight: 800; text-align: center; }
+
 .recognized-card {
   display: grid;
   grid-template-columns: minmax(120px, 38%) minmax(0, 1fr);

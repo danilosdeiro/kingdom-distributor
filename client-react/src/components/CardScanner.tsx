@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Camera, CameraOff, ExternalLink, RefreshCw, Search, SwitchCamera, X } from 'lucide-react';
+import { ArrowLeft, Camera, CameraOff, ExternalLink, RefreshCw, Search, SwitchCamera, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import {
   CollectorVisionRecognitionService,
+  DEFAULT_CAPTURE_ZOOM,
+  MAX_CAPTURE_ZOOM,
+  MIN_CAPTURE_ZOOM,
   describeRecognitionError,
   type CameraOption,
   type RecognitionProgress,
@@ -54,6 +57,7 @@ export function CardScanner() {
   const [history, setHistory] = useState<ScryfallCard[]>([]);
   const [cameras, setCameras] = useState<CameraOption[]>([]);
   const [cameraIndex, setCameraIndex] = useState(0);
+  const [cameraZoom, setCameraZoom] = useState(DEFAULT_CAPTURE_ZOOM);
   const [manualOpen, setManualOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -145,6 +149,11 @@ export function CardScanner() {
     }
   };
 
+  const changeCameraZoom = (value: number) => {
+    const nextZoom = recognitionRef.current?.setZoom(value) ?? value;
+    setCameraZoom(nextZoom);
+  };
+
   useEffect(() => () => {
     recognitionRef.current?.stop();
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
@@ -229,6 +238,23 @@ export function CardScanner() {
           )}
           <button type="button" className="scanner-manual-action" onClick={() => setManualOpen(true)}><Search size={19} />Buscar pelo nome</button>
         </div>
+
+        {cameraActive && (
+          <div className="scanner-zoom-control">
+            <button type="button" onClick={() => changeCameraZoom(cameraZoom - 0.25)} disabled={cameraZoom <= MIN_CAPTURE_ZOOM} aria-label="Diminuir zoom" title="Diminuir zoom"><ZoomOut size={20} /></button>
+            <input
+              type="range"
+              min={MIN_CAPTURE_ZOOM}
+              max={MAX_CAPTURE_ZOOM}
+              step="0.05"
+              value={cameraZoom}
+              onChange={(event) => changeCameraZoom(Number(event.target.value))}
+              aria-label="Zoom da câmera"
+            />
+            <span>{cameraZoom.toFixed(1)}x</span>
+            <button type="button" onClick={() => changeCameraZoom(cameraZoom + 0.25)} disabled={cameraZoom >= MAX_CAPTURE_ZOOM} aria-label="Aumentar zoom" title="Aumentar zoom"><ZoomIn size={20} /></button>
+          </div>
+        )}
 
         {card && (
           <section className="recognized-card" aria-live="polite">

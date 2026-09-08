@@ -2,6 +2,11 @@ const DEFAULT_COLLECTOR_VISION_URL = 'https://hanclinto.github.io/CollectorVisio
 const COLLECTOR_VISION_URL = (
   import.meta.env.VITE_COLLECTOR_VISION_URL || DEFAULT_COLLECTOR_VISION_URL
 ).replace(/\/$/, '');
+const COLLECTOR_VISION_APPLET_PATH = '/card-scanner/collectorvision-scanner-applet.mjs?v=1.26';
+
+export const MIN_CAPTURE_ZOOM = 1;
+export const MAX_CAPTURE_ZOOM = 2.5;
+export const DEFAULT_CAPTURE_ZOOM = 1.25;
 
 export interface CardRecognitionCandidate {
   cardId: string;
@@ -82,6 +87,7 @@ export class CollectorVisionRecognitionService {
   private target: HTMLElement | null = null;
   private callbacks: CardRecognitionCallbacks = {};
   private activeDeviceId: string | null = null;
+  private captureZoom = DEFAULT_CAPTURE_ZOOM;
   private deduplicator = new RecognitionDeduplicator();
 
   async start(target: HTMLElement, callbacks: CardRecognitionCallbacks, deviceId?: string) {
@@ -93,8 +99,9 @@ export class CollectorVisionRecognitionService {
     this.target = target;
     this.callbacks = callbacks;
     this.activeDeviceId = deviceId || null;
+    const appletUrl = new URL(COLLECTOR_VISION_APPLET_PATH, window.location.origin).href;
     const module = await import(
-      /* @vite-ignore */ `${COLLECTOR_VISION_URL}/lib/collectorvision-scanner-applet.mjs`
+      /* @vite-ignore */ appletUrl
     ) as CollectorVisionModule;
     const debug = import.meta.env.VITE_CARD_SCANNER_DEBUG === 'true';
 
@@ -112,6 +119,7 @@ export class CollectorVisionRecognitionService {
       groupBySecondaryId: true,
       showFpsOverlay: debug,
       overlay: true,
+      captureZoom: this.captureZoom,
       camera: this.cameraConstraints(deviceId),
       onProgress: (data: { stage?: string; ratio?: number; cached?: boolean }) => {
         callbacks.onProgress?.({
@@ -159,18 +167,28 @@ export class CollectorVisionRecognitionService {
     return this.activeDeviceId;
   }
 
+  setZoom(value: number) {
+    this.captureZoom = Math.max(MIN_CAPTURE_ZOOM, Math.min(MAX_CAPTURE_ZOOM, value));
+    this.scanner?.updateConfig({ captureZoom: this.captureZoom });
+    return this.captureZoom;
+  }
+
+  getZoom() {
+    return this.captureZoom;
+  }
+
   private cameraConstraints(deviceId?: string): MediaTrackConstraints {
     if (deviceId) {
       return {
         deviceId: { exact: deviceId },
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
       };
     }
     return {
       facingMode: { ideal: 'environment' },
-      width: { ideal: 1280 },
-      height: { ideal: 720 },
+      width: { ideal: 1920 },
+      height: { ideal: 1080 },
     };
   }
 
