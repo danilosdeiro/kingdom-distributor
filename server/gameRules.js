@@ -70,7 +70,9 @@ function generateRoomCode(roomExists) {
   let code;
 
   do {
-    code = crypto.randomBytes(3).toString('hex').slice(0, ROOM_CODE_SIZE).toUpperCase();
+    code = crypto.randomInt(10 ** ROOM_CODE_SIZE)
+      .toString()
+      .padStart(ROOM_CODE_SIZE, '0');
   } while (roomExists(code));
 
   return code;

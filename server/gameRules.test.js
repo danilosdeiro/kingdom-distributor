@@ -43,6 +43,7 @@ test('generate room code avoids existing rooms', () => {
   });
 
   assert.equal(code.length, 4);
+  assert.match(code, /^\d{4}$/);
   assert.equal(calls, 1);
 });
 

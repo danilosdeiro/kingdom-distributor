@@ -180,7 +180,12 @@ export function Home() {
       return;
     }
 
-    const codigoLimpo = codigoSala.trim().toUpperCase();
+    const codigoLimpo = codigoSala.trim();
+
+    if (!/^\d{4}$/.test(codigoLimpo)) {
+      toast.error('O código da sala deve ter 4 números.');
+      return;
+    }
 
     if (!(await prepararServidor('entrar'))) return;
 
@@ -259,9 +264,13 @@ export function Home() {
             <input
               id="codigo"
               type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={4}
+              autoComplete="one-time-code"
               value={codigoSala}
-              onChange={(e) => setCodigoSala(e.target.value)}
-              placeholder="Ex: ABCD"
+              onChange={(e) => setCodigoSala(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              placeholder="Ex: 0427"
             />
           </div>
           <button
