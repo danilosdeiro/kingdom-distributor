@@ -48,7 +48,7 @@ VITE_BACKEND_URL=http://localhost:3000
 Exemplo:
 
 ```bash
-CLIENT_ORIGINS=http://localhost:5173,https://meukingdom.dansdeiro.workers.dev,https://localhost,capacitor://localhost
+CLIENT_ORIGINS=http://localhost:5173,https://meukingdom.pages.dev,https://localhost,capacitor://localhost
 ```
 
 ### Frontend
@@ -82,7 +82,7 @@ npm start
 
 ## Hospedagem
 
-O frontend está publicado como arquivos estáticos no Cloudflare Workers. O backend deve continuar em um serviço Node com suporte persistente a WebSockets.
+O frontend está publicado no Cloudflare Pages. O backend deve continuar em um serviço Node com suporte persistente a WebSockets.
 
 O servidor sempre mantém um snapshot local e, quando `REDIS_URL` está configurada, grava também uma cópia versionada no Redis. Na inicialização, ele escolhe a cópia mais recente para não restaurar dados antigos após uma indisponibilidade.
 

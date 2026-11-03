@@ -30,7 +30,7 @@
 
                 <data
                     android:scheme="https"
-                    android:host="meukingdom.dansdeiro.workers.dev" />
+                    android:host="meukingdom.pages.dev" />
             </intent-filter>
 
         </activity>

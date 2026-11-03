@@ -19,6 +19,7 @@ pnpm-debug.log*
 
 # Runtime state
 server/data/
+.wrangler/
 
 # Editor and OS
 .vscode/*
