@@ -16,11 +16,11 @@ Como instalar no Android:
 4. Volte e toque em Instalar.
 
 Depois de instalar, podem entrar pelo app ou pelo site:
-https://meukingdom.vercel.app
+https://meukingdom.dansdeiro.workers.dev
 ```
 
 Observacoes:
 
 - O aviso do Android aparece porque o APK nao esta publicado na Play Store.
 - O app usa o mesmo servidor do site.
-- Links de convite do site `https://meukingdom.vercel.app/CODIGO` podem abrir direto no app quando o Android reconhecer o vinculo do dominio.
+- Links de convite do site `https://meukingdom.dansdeiro.workers.dev/CODIGO` podem abrir direto no app quando o Android reconhecer o vínculo do domínio.

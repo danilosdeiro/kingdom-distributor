@@ -48,12 +48,13 @@ VITE_BACKEND_URL=http://localhost:3000
 Exemplo:
 
 ```bash
-CLIENT_ORIGINS=http://localhost:5173,https://meukingdom.vercel.app,https://localhost,capacitor://localhost
+CLIENT_ORIGINS=http://localhost:5173,https://meukingdom.dansdeiro.workers.dev,https://localhost,capacitor://localhost
 ```
 
 ### Frontend
 
 - `VITE_BACKEND_URL`: URL pública do backend Socket.IO.
+- `VITE_PUBLIC_APP_URL`: URL pública do frontend usada em convites e App Links.
 - `VITE_COLLECTOR_VISION_URL`: origem dos modelos e do motor web do scanner de cartas.
 - `VITE_CARD_SCANNER_DEBUG`: use `true` para exibir FPS e diagnósticos do scanner.
 
@@ -79,9 +80,9 @@ npm test
 npm start
 ```
 
-## Observação sobre Vercel e tempo real
+## Hospedagem
 
-A Vercel oferece suporte nativo a WebSockets em Functions, mas conexões ficam vinculadas à duração máxima da Function e conexões futuras não têm garantia de cair na mesma instância. Por isso, o backend deve rodar em um serviço Node persistente para partidas em tempo real.
+O frontend está publicado como arquivos estáticos no Cloudflare Workers. O backend deve continuar em um serviço Node com suporte persistente a WebSockets.
 
 O servidor sempre mantém um snapshot local e, quando `REDIS_URL` está configurada, grava também uma cópia versionada no Redis. Na inicialização, ele escolhe a cópia mais recente para não restaurar dados antigos após uma indisponibilidade.
 

@@ -5,8 +5,9 @@ import {
   registerPlugin,
   type PluginListenerHandle,
 } from '@capacitor/core';
+import { PUBLIC_APP_URL } from '../config/publicUrl';
 
-const UPDATE_MANIFEST_URL = 'https://meukingdom.vercel.app/app-update.json';
+const UPDATE_MANIFEST_URL = `${PUBLIC_APP_URL}/app-update.json`;
 const RELEASE_PATH_PREFIX = '/danilosdeiro/kingdom-distributor/releases/download/';
 
 export interface AppUpdate {

@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "preview": "vite preview",
+    "deploy:cloudflare": "npm run build && wrangler deploy",
     "android:sync": "npm run build && cap sync android",
     "android:open": "cap open android",
     "android:run": "npm run build && cap run android"
@@ -39,6 +40,7 @@
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.39.1",
     "vite": "^7.1.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "wrangler": "^4.156.2"
   }
 }

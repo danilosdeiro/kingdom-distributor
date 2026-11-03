@@ -9,6 +9,7 @@ import { Home } from './components/Home.tsx';
 import { Lobby } from './components/Lobby.tsx';
 import { RoleView } from './components/RoleView.tsx';
 import { CardScanner } from './components/CardScanner.tsx';
+import { PUBLIC_APP_HOST } from './config/publicUrl.ts';
 
 const router = createBrowserRouter([
   {
@@ -41,12 +42,10 @@ const router = createBrowserRouter([
   },
 ]);
 
-const APP_LINK_HOST = 'meukingdom.vercel.app';
-
 function handleIncomingAppUrl(urlString: string) {
   try {
     const url = new URL(urlString);
-    if (url.hostname !== APP_LINK_HOST) return;
+    if (url.hostname !== PUBLIC_APP_HOST) return;
 
     const route = `${url.pathname}${url.search}${url.hash}`;
     if (route && route !== '/') {

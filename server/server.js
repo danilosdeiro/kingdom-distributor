@@ -42,7 +42,7 @@ const {
 
 const app = express();
 
-const CLIENT_ORIGINS = (process.env.CLIENT_ORIGINS || 'http://localhost:5173,https://meukingdom.vercel.app,https://localhost,capacitor://localhost')
+const CLIENT_ORIGINS = (process.env.CLIENT_ORIGINS || 'http://localhost:5173,https://meukingdom.dansdeiro.workers.dev,https://meukingdom.vercel.app,https://localhost,capacitor://localhost')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);

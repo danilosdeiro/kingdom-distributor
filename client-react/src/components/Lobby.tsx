@@ -7,6 +7,7 @@ import { getPlayerId } from '../services/playerIdentity';
 import { clearRoomSession } from '../services/roomSession';
 import { showSocketError, type SocketErrorPayload } from '../services/socketError';
 import { toast } from 'react-hot-toast';
+import { PUBLIC_APP_URL } from '../config/publicUrl';
 import './Lobby.css';
 
 const TooltipWrapper = ({ children, text }: { children: React.ReactNode; text: string }) => {
@@ -34,8 +35,6 @@ interface CorMagicWar {
 interface Jogador { id: string; nome: string; connected?: boolean; cor?: CorMagicWar | null; }
 type ModoDeJogo = 'aleatorio' | 'convencional' | 'personalizado' | 'magic-war';
 type PapelSorteavel = 'Usurpador' | 'Caçador' | 'Coringa';
-
-const PUBLIC_APP_URL = 'https://meukingdom.vercel.app';
 
 export function Lobby() {
 const handleCompartilhar = () => {
